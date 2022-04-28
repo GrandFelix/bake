@@ -12,7 +12,7 @@ FROM markstory/cakephp-docs-builder:runtime as runtime
 
 # Configure search index script
 ENV LANGS="en es fr ja pt ru"
-ENV SEARCH_SOURCE="/data/docs"
+ENV SEARCH_SOURCE="/usr/share/nginx/html"
 ENV SEARCH_URL_PREFIX="/bake/2"
 
 COPY --from=builder /data/docs /data/docs
@@ -22,5 +22,3 @@ COPY --from=builder /data/docs-builder/nginx.conf /etc/nginx/conf.d/default.conf
 # Copy docs into place.
 RUN cp -R /data/website/html/* /usr/share/nginx/html \
   && rm -rf /data/website
-
-CMD ["/data/run.sh"]

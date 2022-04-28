@@ -18,8 +18,8 @@ namespace Bake\Test\TestCase\Command;
 
 use Bake\Command\ModelCommand;
 use Bake\Test\TestCase\TestCase;
-use Cake\Command\Command;
 use Cake\Console\Arguments;
+use Cake\Console\CommandInterface;
 use Cake\Console\ConsoleIo;
 use Cake\Core\Configure;
 use Cake\Core\Plugin;
@@ -93,7 +93,7 @@ class ModelCommandTest extends TestCase
     {
         $this->exec('bake model --connection test');
 
-        $this->assertExitCode(Command::CODE_SUCCESS);
+        $this->assertExitCode(CommandInterface::CODE_SUCCESS);
         $this->assertOutputContains('- TodoItems');
         $this->assertOutputContains('- TodoTasks');
         $this->assertOutputContains('- TodoLabels');
@@ -921,10 +921,6 @@ class ModelCommandTest extends TestCase
                 'integer' => ['rule' => 'integer', 'args' => []],
                 'notEmpty' => ['rule' => 'notEmptyString', 'args' => []],
             ],
-            'id' => [
-                'integer' => ['rule' => 'integer', 'args' => []],
-                'allowEmpty' => ['rule' => 'allowEmptyString', 'args' => [null, 'create']],
-            ],
         ];
         $this->assertEquals($expected, $result);
     }
@@ -967,10 +963,6 @@ class ModelCommandTest extends TestCase
             'completed' => [
                 'boolean' => ['rule' => 'boolean', 'args' => []],
                 'notEmpty' => ['rule' => 'notEmptyString', 'args' => []],
-            ],
-            'uid' => [
-                'integer' => ['rule' => 'integer', 'args' => []],
-                'allowEmpty' => ['rule' => 'allowEmptyString', 'args' => [null, 'create']],
             ],
         ];
         $this->assertEquals($expected, $result);
@@ -1020,10 +1012,6 @@ class ModelCommandTest extends TestCase
         $command = new ModelCommand();
         $result = $command->getValidation($model, [], $args);
         $expected = [
-            'id' => [
-                'integer' => ['rule' => 'integer', 'args' => []],
-                'allowEmpty' => ['rule' => 'allowEmptyString', 'args' => [null, 'create']],
-            ],
             'name' => [
                 'scalar' => ['rule' => 'scalar', 'args' => []],
                 'requirePresence' => ['rule' => 'requirePresence', 'args' => ['create']],
@@ -1058,10 +1046,6 @@ class ModelCommandTest extends TestCase
         $args = new Arguments([], [], []);
         $result = $command->getValidation($model, [], $args);
         $expected = [
-            'id' => [
-                'integer' => ['rule' => 'integer', 'args' => []],
-                'allowEmpty' => ['rule' => 'allowEmptyString', 'args' => [null, 'create']],
-            ],
             'name' => [
                 'scalar' => ['rule' => 'scalar', 'args' => []],
                 'requirePresence' => ['rule' => 'requirePresence', 'args' => ['create']],
@@ -1078,29 +1062,6 @@ class ModelCommandTest extends TestCase
             ],
         ];
         $this->assertEquals($expected, $result);
-    }
-
-    /**
-     * test getting validation rules and exempting foreign keys
-     *
-     * @return void
-     */
-    public function testGetValidationExcludeForeignKeys()
-    {
-        $driver = ConnectionManager::get('test')->getDriver();
-        $this->skipIf($driver instanceof Postgres, 'Incompatible with postgres');
-        $this->skipIf($driver instanceof Sqlserver, 'Incompatible with sqlserver');
-
-        $model = $this->getTableLocator()->get('TodoItems');
-        $associations = [
-            'belongsTo' => [
-                'Users' => ['foreignKey' => 'user_id'],
-            ],
-        ];
-        $command = new ModelCommand();
-        $args = new Arguments([], [], []);
-        $result = $command->getValidation($model, $associations, $args);
-        $this->assertArrayNotHasKey('user_id', $result);
     }
 
     /**
@@ -1146,9 +1107,10 @@ class ModelCommandTest extends TestCase
                 'integer' => ['rule' => 'integer', 'args' => []],
                 'notEmpty' => ['rule' => 'notEmptyString', 'args' => []],
             ],
-            'id' => [
+            'user_id' => [
                 'integer' => ['rule' => 'integer', 'args' => []],
-                'allowEmpty' => ['rule' => 'allowEmptyString', 'args' => [null, 'create']],
+                'requirePresence' => ['rule' => 'requirePresence', 'args' => ['create']],
+                'notEmpty' => ['rule' => 'notEmptyString', 'args' => []],
             ],
         ];
         $this->assertEquals($expected, $result);
@@ -1301,7 +1263,7 @@ class ModelCommandTest extends TestCase
         ];
         $this->exec('bake model --no-test todo_items');
 
-        $this->assertExitCode(Command::CODE_SUCCESS);
+        $this->assertExitCode(CommandInterface::CODE_SUCCESS);
         $this->assertFilesExist($this->generatedFiles);
         $this->assertFileDoesNotExist(ROOT . 'tests/TestCase/Model/Table/TodoItemsTableTest.php');
     }
@@ -1319,7 +1281,7 @@ class ModelCommandTest extends TestCase
         ];
         $this->exec('bake model --no-test --no-fixture todo_items');
 
-        $this->assertExitCode(Command::CODE_SUCCESS);
+        $this->assertExitCode(CommandInterface::CODE_SUCCESS);
         $this->assertFilesExist($this->generatedFiles);
         $this->assertFileDoesNotExist(ROOT . 'tests/Fixture/TodoItemsFixture.php');
         $this->assertFileDoesNotExist(ROOT . 'tests/TestCase/Model/Table/TodoItemsTableTest.php');
@@ -1339,7 +1301,7 @@ class ModelCommandTest extends TestCase
         ];
         $this->exec('bake model --no-fixture todo_items');
 
-        $this->assertExitCode(Command::CODE_SUCCESS);
+        $this->assertExitCode(CommandInterface::CODE_SUCCESS);
         $this->assertFilesExist($this->generatedFiles);
         $this->assertFileDoesNotExist(ROOT . 'tests/Fixture/TodoItemsFixture.php');
     }
@@ -1514,7 +1476,7 @@ class ModelCommandTest extends TestCase
         ];
         $this->exec('bake model --no-test --no-fixture --connection test --table todo_items Items');
 
-        $this->assertExitCode(Command::CODE_SUCCESS);
+        $this->assertExitCode(CommandInterface::CODE_SUCCESS);
         $this->assertFilesExist($this->generatedFiles);
         $result = file_get_contents($this->generatedFiles[0]);
         $this->assertSameAsFile(__FUNCTION__ . '.php', $result);
@@ -1631,7 +1593,7 @@ class ModelCommandTest extends TestCase
         $this->generatedFile = APP . 'Model/Entity/User.php';
         $this->exec('bake model --no-test --no-fixture --no-table --no-fields --no-hidden users');
 
-        $this->assertExitCode(Command::CODE_SUCCESS);
+        $this->assertExitCode(CommandInterface::CODE_SUCCESS);
         $this->assertFileExists($this->generatedFile);
         $result = file_get_contents($this->generatedFile);
         $this->assertSameAsFile(__FUNCTION__ . '.php', $result);
@@ -1647,7 +1609,7 @@ class ModelCommandTest extends TestCase
         $this->generatedFile = APP . 'Model/Entity/User.php';
         $this->exec('bake model --no-test --no-fixture --no-table users');
 
-        $this->assertExitCode(Command::CODE_SUCCESS);
+        $this->assertExitCode(CommandInterface::CODE_SUCCESS);
         $this->assertFileExists($this->generatedFile);
         $result = file_get_contents($this->generatedFile);
         $this->assertSameAsFile(__FUNCTION__ . '.php', $result);
@@ -1676,7 +1638,7 @@ class ModelCommandTest extends TestCase
         $this->generatedFile = APP . 'Model/Entity/TodoItem.php';
         $this->exec('bake model --no-test --no-fixture --no-table --no-fields todo_items');
 
-        $this->assertExitCode(Command::CODE_SUCCESS);
+        $this->assertExitCode(CommandInterface::CODE_SUCCESS);
         $this->assertFileExists($this->generatedFile);
         $result = file_get_contents($this->generatedFile);
         $this->assertSameAsFile(__FUNCTION__ . '.php', $result);
@@ -1694,7 +1656,7 @@ class ModelCommandTest extends TestCase
         ];
         $this->exec('bake model --no-test --no-table --no-fixture TodoItems');
 
-        $this->assertExitCode(Command::CODE_SUCCESS);
+        $this->assertExitCode(CommandInterface::CODE_SUCCESS);
         $this->assertFilesExist($this->generatedFiles);
         $result = file_get_contents($this->generatedFiles[0]);
         $this->assertSameAsFile(__FUNCTION__ . '.php', $result);
@@ -1710,7 +1672,7 @@ class ModelCommandTest extends TestCase
         $this->generatedFile = APP . 'Model/Entity/TodoItem.php';
         $this->exec('bake model --no-test --no-fixture --no-table --no-fields todo_items');
 
-        $this->assertExitCode(Command::CODE_SUCCESS);
+        $this->assertExitCode(CommandInterface::CODE_SUCCESS);
         $this->assertFileExists($this->generatedFile);
         $result = file_get_contents($this->generatedFile);
         $this->assertSameAsFile(__FUNCTION__ . '.php', $result);
@@ -1726,7 +1688,7 @@ class ModelCommandTest extends TestCase
         $this->generatedFile = APP . 'Model/Entity/TodoItem.php';
         $this->exec('bake model --no-test --no-fixture --no-table --fields id,title,body,completed todo_items');
 
-        $this->assertExitCode(Command::CODE_SUCCESS);
+        $this->assertExitCode(CommandInterface::CODE_SUCCESS);
         $this->assertFileExists($this->generatedFile);
         $result = file_get_contents($this->generatedFile);
         $this->assertSameAsFile(__FUNCTION__ . '.php', $result);
@@ -1742,7 +1704,7 @@ class ModelCommandTest extends TestCase
         $this->generatedFile = APP . 'Model/Entity/User.php';
         $this->exec('bake model --no-test --no-fixture --no-table --no-fields --hidden password users');
 
-        $this->assertExitCode(Command::CODE_SUCCESS);
+        $this->assertExitCode(CommandInterface::CODE_SUCCESS);
         $this->assertFileExists($this->generatedFile);
         $result = file_get_contents($this->generatedFile);
         $this->assertSameAsFile(__FUNCTION__ . '.php', $result);
@@ -1758,7 +1720,7 @@ class ModelCommandTest extends TestCase
         $this->generatedFile = APP . 'Model/Entity/User.php';
         $this->exec('bake model --no-test --no-fixture --no-table --no-fields --hidden foo,bar users');
 
-        $this->assertExitCode(Command::CODE_SUCCESS);
+        $this->assertExitCode(CommandInterface::CODE_SUCCESS);
         $this->assertFileExists($this->generatedFile);
         $result = file_get_contents($this->generatedFile);
         $this->assertSameAsFile(__FUNCTION__ . '.php', $result);
@@ -1778,7 +1740,7 @@ class ModelCommandTest extends TestCase
 
         $this->exec('bake model --no-validation --no-test --no-fixture --no-entity BakeTest.Users');
 
-        $this->assertExitCode(Command::CODE_SUCCESS);
+        $this->assertExitCode(CommandInterface::CODE_SUCCESS);
         $this->assertFileExists($this->generatedFile);
         $result = file_get_contents($this->generatedFile);
         $this->assertSameAsFile(__FUNCTION__ . '.php', $result);
@@ -1795,7 +1757,7 @@ class ModelCommandTest extends TestCase
 
         $this->exec('bake model --no-validation --no-test --no-fixture --no-entity TodoTasks');
 
-        $this->assertExitCode(Command::CODE_SUCCESS);
+        $this->assertExitCode(CommandInterface::CODE_SUCCESS);
         $this->assertFileExists($this->generatedFile);
         $result = file_get_contents($this->generatedFile);
         $this->assertStringContainsString('CounterCache', $result);
@@ -1816,7 +1778,7 @@ class ModelCommandTest extends TestCase
 
         $this->exec('bake model --no-validation --no-test --no-fixture --no-entity -p BakeTest Users');
 
-        $this->assertExitCode(Command::CODE_SUCCESS);
+        $this->assertExitCode(CommandInterface::CODE_SUCCESS);
         $this->assertFileExists($this->generatedFile);
         $result = file_get_contents($this->generatedFile);
         $this->assertSameAsFile(__FUNCTION__ . '.php', $result);
@@ -1834,7 +1796,7 @@ class ModelCommandTest extends TestCase
         ];
         $this->exec('bake model --no-test --no-fixture --no-entity Users');
 
-        $this->assertExitCode(Command::CODE_SUCCESS);
+        $this->assertExitCode(CommandInterface::CODE_SUCCESS);
         $this->assertFilesExist($this->generatedFiles);
 
         $result = file_get_contents($this->generatedFiles[0]);
@@ -1850,7 +1812,7 @@ class ModelCommandTest extends TestCase
     {
         $this->exec('bake model');
 
-        $this->assertExitCode(Command::CODE_SUCCESS);
+        $this->assertExitCode(CommandInterface::CODE_SUCCESS);
         $this->assertOutputContains('Choose a model to bake from the following:');
     }
 
@@ -1869,7 +1831,7 @@ class ModelCommandTest extends TestCase
         ];
         $this->exec('bake model --connection test users');
 
-        $this->assertExitCode(Command::CODE_SUCCESS);
+        $this->assertExitCode(CommandInterface::CODE_SUCCESS);
         $this->assertFilesExist($this->generatedFiles);
     }
 
@@ -1901,7 +1863,134 @@ class ModelCommandTest extends TestCase
         ];
         $this->exec("bake model --connection test {$name}");
 
-        $this->assertExitCode(Command::CODE_SUCCESS);
+        $this->assertExitCode(CommandInterface::CODE_SUCCESS);
         $this->assertFilesExist($this->generatedFiles);
+    }
+
+    /**
+     * test baking nullable foreign keys
+     *
+     * @return void
+     */
+    public function testBakeTableNullableForeignKey()
+    {
+        $this->generatedFiles = [
+            APP . 'Model/Table/TestBakeArticlesTable.php',
+        ];
+
+        $validation = [
+            'id' => [
+                'valid' => [
+                    'rule' => 'numeric',
+                    'args' => [],
+                ],
+                'allowEmpty' => [
+                    'rule' => 'allowEmptyString',
+                    'args' => ['create'],
+                ],
+            ],
+            'name' => [
+                'valid' => [
+                    'rule' => 'scalar',
+                    'args' => [],
+                ],
+                'maxLength' => [
+                    'rule' => 'maxLength',
+                    'args' => [
+                        100,
+                        'Name must be shorter than 100 characters.',
+                    ],
+                ],
+                'requirePresense' => [
+                    'rule' => 'requirePresence',
+                    'args' => ['create'],
+                ],
+                'allowEmpty' => [
+                    'rule' => 'allowEmptyString',
+                    'args' => [null, false],
+                ],
+            ],
+            'count' => [
+                'valid' => [
+                    'rule' => 'nonNegativeInteger',
+                    'args' => [],
+                ],
+                'requirePresense' => [
+                    'rule' => 'requirePresence',
+                    'args' => ['create'],
+                ],
+                'allowEmpty' => [
+                    'rule' => 'allowEmptyString',
+                    'args' => [null, false],
+                ],
+            ],
+            'price' => [
+                'valid' => [
+                    'rule' => 'greaterThanOrEqual',
+                    'args' => [
+                        0,
+                    ],
+                ],
+                'requirePresense' => [
+                    'rule' => 'requirePresence',
+                    'args' => ['create'],
+                ],
+                'allowEmpty' => [
+                    'rule' => 'allowEmptyString',
+                    'args' => [null, false],
+                ],
+            ],
+            'email' => [
+                'valid' => [
+                    'rule' => 'email',
+                    'args' => [],
+                ],
+                'unique' => [
+                    'rule' => 'validateUnique',
+                    'provider' => 'table',
+                ],
+                'allowEmpty' => [
+                    'rule' => 'allowEmptyString',
+                    'args' => [],
+                ],
+            ],
+            'image' => [
+                'uploadedFile' => [
+                    'rule' => 'uploadedFile',
+                    'args' => [
+                        [
+                            'optional' => true,
+                            'types' => ['image/jpeg'],
+                        ],
+                    ],
+                ],
+                'allowEmpty' => [
+                    'rule' => 'allowEmptyFile',
+                    'args' => [],
+                ],
+            ],
+        ];
+
+        $command = new ModelCommand();
+        $command->connection = 'test';
+
+        $name = 'TestBakeArticles';
+        $args = new Arguments([$name], ['table' => 'bake_articles', 'force' => true], []);
+        $io = new ConsoleIo($this->_out, $this->_err, $this->_in);
+
+        $table = $command->getTable($name, $args);
+        $tableObject = $command->getTableObject($name, $table);
+        $data = $command->getTableContext($tableObject, $table, $name, $args, $io);
+        $data['validation'] = $validation;
+        $data['associations'] = [
+            'belongsTo' => [],
+            'hasMany' => [],
+            'belongsToMany' => [],
+        ];
+        $data['rulesChecker'] = [];
+        $command->bakeTable($tableObject, $data, $args, $io);
+
+        $result = file_get_contents($this->generatedFiles[0]);
+        $this->assertSameAsFile(__FUNCTION__ . '.php', $result);
     }
 }
