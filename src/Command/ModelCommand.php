@@ -25,7 +25,7 @@ use Cake\Console\ConsoleOptionParser;
 use Cake\Core\Configure;
 use Cake\Database\Connection;
 use Cake\Database\Driver\Sqlserver;
-use Cake\Database\Exception;
+use Cake\Database\Exception\DatabaseException;
 use Cake\Database\Schema\CachedCollection;
 use Cake\Database\Schema\TableSchema;
 use Cake\Database\Schema\TableSchemaInterface;
@@ -347,11 +347,18 @@ class ModelCommand extends BakeCommand
                 ];
             } else {
                 $tmpModelName = $this->_modelNameFromKey($fieldName);
-                if (!in_array(Inflector::tableize($tmpModelName), $this->_tables, true)) {
+                $associationTable = $this->getTableLocator()->get($tmpModelName);
+                $tables = $this->listAll();
+                // Check if association model could not be instantiated as a subclass but a generic Table instance instead
+                if (
+                    get_class($associationTable) === Table::class &&
+                    !in_array(Inflector::tableize($tmpModelName), $tables, true)
+                ) {
                     $found = $this->findTableReferencedBy($schema, $fieldName);
-                    if ($found) {
-                        $tmpModelName = Inflector::camelize($found);
+                    if (!$found) {
+                        continue;
                     }
+                    $tmpModelName = Inflector::camelize($found);
                 }
                 $assoc = [
                     'alias' => $tmpModelName,
@@ -957,7 +964,7 @@ class ModelCommand extends BakeCommand
 
             try {
                 $otherSchema = $otherModel->getSchema();
-            } catch (Exception $e) {
+            } catch (DatabaseException $e) {
                 continue;
             }
 
