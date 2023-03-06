@@ -24,7 +24,7 @@
         "brick/varexporter": "^0.3.5"
     },
     "require-dev": {
-        "cakephp/cakephp-codesniffer": "^4.0",
+        "cakephp/cakephp-codesniffer": "^5.1",
         "phpunit/phpunit": "^8.5 || ^9.3",
         "cakephp/debug_kit": "^4.1",
         "cakephp/plugin-installer": "^1.3"
