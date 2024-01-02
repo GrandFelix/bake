@@ -43,7 +43,7 @@ class ModelCommand extends BakeCommand
      *
      * @var string
      */
-    public $pathFragment = 'Model/';
+    public string $pathFragment = 'Model/';
 
     /**
      * Table prefix
