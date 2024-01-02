@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 namespace Bake\Test\App\Model\Table;
 
-use Cake\ORM\Query;
+use Cake\ORM\Query\SelectQuery;
 use Cake\ORM\RulesChecker;
 use Cake\ORM\Table;
 use Cake\Validation\Validator;
@@ -16,17 +16,17 @@ use Cake\Validation\Validator;
  *
  * @method \Bake\Test\App\Model\Entity\User newEmptyEntity()
  * @method \Bake\Test\App\Model\Entity\User newEntity(array $data, array $options = [])
- * @method \Bake\Test\App\Model\Entity\User[] newEntities(array $data, array $options = [])
- * @method \Bake\Test\App\Model\Entity\User get($primaryKey, $options = [])
- * @method \Bake\Test\App\Model\Entity\User findOrCreate($search, ?callable $callback = null, $options = [])
+ * @method array<\Bake\Test\App\Model\Entity\User> newEntities(array $data, array $options = [])
+ * @method \Bake\Test\App\Model\Entity\User get(mixed $primaryKey, array|string $finder = 'all', \Psr\SimpleCache\CacheInterface|string|null $cache = null, \Closure|string|null $cacheKey = null, mixed ...$args)
+ * @method \Bake\Test\App\Model\Entity\User findOrCreate($search, ?callable $callback = null, array $options = [])
  * @method \Bake\Test\App\Model\Entity\User patchEntity(\Cake\Datasource\EntityInterface $entity, array $data, array $options = [])
- * @method \Bake\Test\App\Model\Entity\User[] patchEntities(iterable $entities, array $data, array $options = [])
- * @method \Bake\Test\App\Model\Entity\User|false save(\Cake\Datasource\EntityInterface $entity, $options = [])
- * @method \Bake\Test\App\Model\Entity\User saveOrFail(\Cake\Datasource\EntityInterface $entity, $options = [])
- * @method \Bake\Test\App\Model\Entity\User[]|\Cake\Datasource\ResultSetInterface|false saveMany(iterable $entities, $options = [])
- * @method \Bake\Test\App\Model\Entity\User[]|\Cake\Datasource\ResultSetInterface saveManyOrFail(iterable $entities, $options = [])
- * @method \Bake\Test\App\Model\Entity\User[]|\Cake\Datasource\ResultSetInterface|false deleteMany(iterable $entities, $options = [])
- * @method \Bake\Test\App\Model\Entity\User[]|\Cake\Datasource\ResultSetInterface deleteManyOrFail(iterable $entities, $options = [])
+ * @method array<\Bake\Test\App\Model\Entity\User> patchEntities(iterable $entities, array $data, array $options = [])
+ * @method \Bake\Test\App\Model\Entity\User|false save(\Cake\Datasource\EntityInterface $entity, array $options = [])
+ * @method \Bake\Test\App\Model\Entity\User saveOrFail(\Cake\Datasource\EntityInterface $entity, array $options = [])
+ * @method iterable<\Bake\Test\App\Model\Entity\User>|\Cake\Datasource\ResultSetInterface<\Bake\Test\App\Model\Entity\User>|false saveMany(iterable $entities, array $options = [])
+ * @method iterable<\Bake\Test\App\Model\Entity\User>|\Cake\Datasource\ResultSetInterface<\Bake\Test\App\Model\Entity\User> saveManyOrFail(iterable $entities, array $options = [])
+ * @method iterable<\Bake\Test\App\Model\Entity\User>|\Cake\Datasource\ResultSetInterface<\Bake\Test\App\Model\Entity\User>|false deleteMany(iterable $entities, array $options = [])
+ * @method iterable<\Bake\Test\App\Model\Entity\User>|\Cake\Datasource\ResultSetInterface<\Bake\Test\App\Model\Entity\User> deleteManyOrFail(iterable $entities, array $options = [])
  *
  * @mixin \Cake\ORM\Behavior\TimestampBehavior
  */
@@ -35,7 +35,7 @@ class UsersTable extends Table
     /**
      * Initialize method
      *
-     * @param array $config The configuration for the Table.
+     * @param array<string, mixed> $config The configuration for the Table.
      * @return void
      */
     public function initialize(array $config): void

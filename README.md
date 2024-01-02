@@ -10,7 +10,7 @@ suite of CLI tools, you can quickly and easily generate code for your applicatio
 
 ## Installation
 
-You can install this plugin into your CakePHP application using [composer](http://getcomposer.org).
+You can install this plugin into your CakePHP application using [composer](https://getcomposer.org).
 
 The recommended way to install composer packages is:
 
@@ -20,7 +20,7 @@ composer require --dev cakephp/bake
 
 ## Documentation
 
-You can find the documentation for bake [on its own cookbook](https://book.cakephp.org/bake/2).
+You can find the documentation for bake [on its own cookbook](https://book.cakephp.org/bake/3).
 
 ## Testing
 

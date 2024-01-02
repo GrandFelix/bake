@@ -2,23 +2,22 @@
 declare(strict_types=1);
 
 /**
- * CakePHP(tm) : Rapid Development Framework (http://cakephp.org)
- * Copyright (c) Cake Software Foundation, Inc. (http://cakefoundation.org)
+ * CakePHP(tm) : Rapid Development Framework (https://cakephp.org)
+ * Copyright (c) Cake Software Foundation, Inc. (https://cakefoundation.org)
  *
  * Licensed under The MIT License
  * For full copyright and license information, please see the LICENSE.txt
  * Redistributions of files must retain the above copyright notice.
  *
- * @copyright     Copyright (c) Cake Software Foundation, Inc. (http://cakefoundation.org)
- * @link          http://cakephp.org CakePHP(tm) Project
+ * @copyright     Copyright (c) Cake Software Foundation, Inc. (https://cakefoundation.org)
+ * @link          https://cakephp.org CakePHP(tm) Project
  * @since         0.1.0
- * @license       http://www.opensource.org/licenses/mit-license.php MIT License
+ * @license       https://www.opensource.org/licenses/mit-license.php MIT License
  */
-
 namespace Bake\Command;
 
+use Bake\CodeGen\FileBuilder;
 use Bake\Utility\TableScanner;
-use Bake\Utility\TemplateRenderer;
 use Cake\Console\Arguments;
 use Cake\Console\ConsoleIo;
 use Cake\Console\ConsoleOptionParser;
@@ -32,6 +31,7 @@ use Cake\Database\Schema\TableSchemaInterface;
 use Cake\Datasource\ConnectionManager;
 use Cake\ORM\Table;
 use Cake\Utility\Inflector;
+use function Cake\Core\pluginSplit;
 
 /**
  * Command for generating model files.
@@ -52,14 +52,14 @@ class ModelCommand extends BakeCommand
      *
      * @var string
      */
-    public $tablePrefix = '';
+    public string $tablePrefix = '';
 
     /**
      * Holds tables found on connection.
      *
-     * @var string[]
+     * @var array<string>
      */
-    protected $_tables = [];
+    protected array $_tables = [];
 
     /**
      * Execute the command.
@@ -228,12 +228,13 @@ class ModelCommand extends BakeCommand
 
         $associations = [
             'belongsTo' => [],
+            'hasOne' => [],
             'hasMany' => [],
             'belongsToMany' => [],
         ];
 
         $primary = $table->getPrimaryKey();
-        $associations = $this->findBelongsTo($table, $associations);
+        $associations = $this->findBelongsTo($table, $associations, $args);
 
         if (is_array($primary) && count($primary) > 1) {
             $io->warning(
@@ -243,6 +244,7 @@ class ModelCommand extends BakeCommand
             return $associations;
         }
 
+        $associations = $this->findHasOne($table, $associations);
         $associations = $this->findHasMany($table, $associations);
         $associations = $this->findBelongsToMany($table, $associations);
 
@@ -328,9 +330,10 @@ class ModelCommand extends BakeCommand
      *
      * @param \Cake\ORM\Table $model Database\Table instance of table being generated.
      * @param array $associations Array of in progress associations
+     * @param \Cake\Console\Arguments|null $args CLI arguments
      * @return array Associations with belongsTo added in.
      */
-    public function findBelongsTo(Table $model, array $associations): array
+    public function findBelongsTo(Table $model, array $associations, ?Arguments $args = null): array
     {
         $schema = $model->getSchema();
         foreach ($schema->columns() as $fieldName) {
@@ -347,18 +350,27 @@ class ModelCommand extends BakeCommand
                 ];
             } else {
                 $tmpModelName = $this->_modelNameFromKey($fieldName);
+                if (!$this->getTableLocator()->exists($tmpModelName)) {
+                    $this->getTableLocator()->get(
+                        $tmpModelName,
+                        ['connection' => ConnectionManager::get($this->connection)]
+                    );
+                }
                 $associationTable = $this->getTableLocator()->get($tmpModelName);
+                $this->getTableLocator()->remove($tmpModelName);
                 $tables = $this->listAll();
                 // Check if association model could not be instantiated as a subclass but a generic Table instance instead
                 if (
                     get_class($associationTable) === Table::class &&
                     !in_array(Inflector::tableize($tmpModelName), $tables, true)
                 ) {
+                    $allowAliasRelations = $args && $args->getOption('skip-relation-check');
                     $found = $this->findTableReferencedBy($schema, $fieldName);
-                    if (!$found) {
+                    if ($found) {
+                        $tmpModelName = Inflector::camelize($found);
+                    } elseif (!$allowAliasRelations) {
                         continue;
                     }
-                    $tmpModelName = Inflector::camelize($found);
                 }
                 $assoc = [
                     'alias' => $tmpModelName,
@@ -414,6 +426,105 @@ class ModelCommand extends BakeCommand
     }
 
     /**
+     * Checks whether the given source and target table names are sides
+     * of a possible many-to-many relation.
+     *
+     * @param string $sourceTable The source table name.
+     * @param string $targetTable The target table name.
+     * @return bool
+     */
+    public function isPossibleBelongsToManyRelation(string $sourceTable, string $targetTable): bool
+    {
+        $tables = $this->listAll();
+
+        $pregTableName = preg_quote($sourceTable, '/');
+        $pregPattern = "/^{$pregTableName}_|_{$pregTableName}$/";
+
+        if (preg_match($pregPattern, $targetTable) === 1) {
+            $possibleBTMTargetTable = preg_replace($pregPattern, '', $targetTable);
+            if (in_array($possibleBTMTargetTable, $tables, true)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Checks whether the given table schema has a unique constraint for
+     * the given field.
+     *
+     * The check is only going to be satisfied if the constraint has
+     * only this one specific field. Multi-column constraints will not
+     * match, as they cannot guarantee uniqueness on the given field.
+     *
+     * @param \Cake\Database\Schema\TableSchemaInterface $schema The schema to check for the constraint.
+     * @param string $keyField The field of the constraint.
+     * @return bool
+     */
+    public function hasUniqueConstraintFor(TableSchemaInterface $schema, string $keyField): bool
+    {
+        foreach ($schema->constraints() as $constraint) {
+            $constraintInfo = $schema->getConstraint($constraint);
+            if (
+                $constraintInfo['type'] === TableSchema::CONSTRAINT_UNIQUE &&
+                $constraintInfo['columns'] === [$keyField]
+            ) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Find the hasOne relations and add them to associations list
+     *
+     * @param \Cake\ORM\Table $model Model instance being generated
+     * @param array $associations Array of in progress associations
+     * @return array Associations with hasOne added in.
+     */
+    public function findHasOne(Table $model, array $associations): array
+    {
+        $schema = $model->getSchema();
+        $primaryKey = $schema->getPrimaryKey();
+        $tableName = $schema->name();
+        $foreignKey = $this->_modelKey($tableName);
+
+        $tables = $this->listAll();
+        foreach ($tables as $otherTableName) {
+            if ($this->isPossibleBelongsToManyRelation($tableName, $otherTableName)) {
+                continue;
+            }
+
+            $otherModel = $this->getTableObject($this->_camelize($otherTableName), $otherTableName);
+            $otherSchema = $otherModel->getSchema();
+
+            foreach ($otherSchema->columns() as $fieldName) {
+                if (!$this->hasUniqueConstraintFor($otherSchema, $fieldName)) {
+                    continue;
+                }
+
+                $assoc = false;
+                if (!in_array($fieldName, $primaryKey) && $fieldName === $foreignKey) {
+                    $assoc = [
+                        'alias' => $otherModel->getAlias(),
+                        'foreignKey' => $fieldName,
+                    ];
+                }
+                if ($assoc && $this->plugin) {
+                    $assoc['className'] = $this->plugin . '.' . $assoc['alias'];
+                }
+                if ($assoc) {
+                    $associations['hasOne'][] = $assoc;
+                }
+            }
+        }
+
+        return $associations;
+    }
+
+    /**
      * Find the hasMany relations and add them to associations list
      *
      * @param \Cake\ORM\Table $model Model instance being generated
@@ -429,21 +540,20 @@ class ModelCommand extends BakeCommand
 
         $tables = $this->listAll();
         foreach ($tables as $otherTableName) {
+            if ($this->isPossibleBelongsToManyRelation($tableName, $otherTableName)) {
+                continue;
+            }
+
             $otherModel = $this->getTableObject($this->_camelize($otherTableName), $otherTableName);
             $otherSchema = $otherModel->getSchema();
 
-            $pregTableName = preg_quote($tableName, '/');
-            $pregPattern = "/^{$pregTableName}_|_{$pregTableName}$/";
-            if (preg_match($pregPattern, $otherTableName) === 1) {
-                $possibleHABTMTargetTable = preg_replace($pregPattern, '', $otherTableName);
-                if (in_array($possibleHABTMTargetTable, $tables)) {
-                    continue;
-                }
-            }
-
             foreach ($otherSchema->columns() as $fieldName) {
                 $assoc = false;
-                if (!in_array($fieldName, $primaryKey) && $fieldName === $foreignKey) {
+                if (
+                    !in_array($fieldName, $primaryKey) &&
+                    $fieldName === $foreignKey &&
+                    !$this->hasUniqueConstraintFor($otherSchema, $fieldName)
+                ) {
                     $assoc = [
                         'alias' => $otherModel->getAlias(),
                         'foreignKey' => $fieldName,
@@ -517,7 +627,7 @@ class ModelCommand extends BakeCommand
      * @param \Cake\Console\Arguments $args CLI Arguments
      * @return array<string>|string|null
      */
-    public function getDisplayField(Table $model, Arguments $args)
+    public function getDisplayField(Table $model, Arguments $args): array|string|null
     {
         if ($args->getOption('display-field')) {
             return (string)$args->getOption('display-field');
@@ -531,7 +641,7 @@ class ModelCommand extends BakeCommand
      *
      * @param \Cake\ORM\Table $model The model to introspect.
      * @param \Cake\Console\Arguments $args CLI Arguments
-     * @return string[] The columns in the primary key
+     * @return array<string> The columns in the primary key
      */
     public function getPrimaryKey(Table $model, Arguments $args): array
     {
@@ -620,11 +730,11 @@ class ModelCommand extends BakeCommand
      *
      * @param \Cake\ORM\Table $table The table instance to get fields for.
      * @param \Cake\Console\Arguments $args CLI Arguments
-     * @return string[]|false|null Either an array of fields, `false` in
+     * @return array<string>|false|null Either an array of fields, `false` in
      *   case the no-fields option is used, or `null` if none of the
      *   field options is used.
      */
-    public function getFields(Table $table, Arguments $args)
+    public function getFields(Table $table, Arguments $args): array|false|null
     {
         if ($args->getOption('no-fields')) {
             return false;
@@ -651,7 +761,7 @@ class ModelCommand extends BakeCommand
      *
      * @param \Cake\ORM\Table $model The model to introspect.
      * @param \Cake\Console\Arguments $args CLI Arguments
-     * @return string[] The columns to make accessible
+     * @return array<string> The columns to make accessible
      */
     public function getHiddenFields(Table $model, Arguments $args): array
     {
@@ -678,7 +788,7 @@ class ModelCommand extends BakeCommand
      * @param \Cake\Console\Arguments $args CLI Arguments
      * @return array|false The validation rules.
      */
-    public function getValidation(Table $model, array $associations, Arguments $args)
+    public function getValidation(Table $model, array $associations, Arguments $args): array|false
     {
         if ($args->getOption('no-validation')) {
             return [];
@@ -691,12 +801,19 @@ class ModelCommand extends BakeCommand
 
         $validate = [];
         $primaryKey = $schema->getPrimaryKey();
+        $foreignKeys = [];
+        if (isset($associations['belongsTo'])) {
+            foreach ($associations['belongsTo'] as $assoc) {
+                $foreignKeys[] = $assoc['foreignKey'];
+            }
+        }
         foreach ($fields as $fieldName) {
             // Skip primary key
             if (in_array($fieldName, $primaryKey, true)) {
                 continue;
             }
             $field = $schema->getColumn($fieldName);
+            $field['isForeignKey'] = in_array($fieldName, $foreignKeys, true);
             $validation = $this->fieldValidation($schema, $fieldName, $field, $primaryKey);
             if ($validation) {
                 $validate[$fieldName] = $validation;
@@ -784,7 +901,8 @@ class ModelCommand extends BakeCommand
                 'args' => [],
             ];
         } else {
-            if ($metaData['default'] === null || $metaData['default'] === false) {
+            // FKs shouldn't be required on create to allow e.g. save calls with hasMany associations to create entities
+            if (($metaData['default'] === null || $metaData['default'] === false) && !$metaData['isForeignKey']) {
                 $validation['requirePresence'] = [
                     'rule' => 'requirePresence',
                     'args' => ['create'],
@@ -845,7 +963,7 @@ class ModelCommand extends BakeCommand
                 return $prefix . 'EmptyDateTime';
         }
 
-        if (preg_match('/file|image/', $fieldName)) {
+        if (preg_match('/(^|\s|_|-)(attachment|file|image)$/i', $fieldName)) {
             return $prefix . 'EmptyFile';
         }
 
@@ -993,7 +1111,9 @@ class ModelCommand extends BakeCommand
         if ($args->getOption('no-entity')) {
             return;
         }
+
         $name = $this->_entityName($model->getAlias());
+        $io->out("\n" . sprintf('Baking entity class for %s...', $name), 1, ConsoleIo::NORMAL);
 
         $namespace = Configure::read('App.namespace');
         $pluginPath = '';
@@ -1003,8 +1123,15 @@ class ModelCommand extends BakeCommand
         }
 
         $path = $this->getPath($args);
+        $filename = $path . 'Entity' . DS . $name . '.php';
+
         $usePersistentEntity = $args->getOption('persistent');
         $removePersistentEntity = $args->getOption('remove-persistent');
+
+        $parsedFile = null;
+        if ($args->getOption('update')) {
+            $parsedFile = $this->parseFile($filename);
+        }
 
         $persistentEntityFilePath = $path . 'Entity' . DS . $name . 'Persistent.php';
         $persistentClassExists = false;
@@ -1022,19 +1149,21 @@ class ModelCommand extends BakeCommand
             'pluginPath' => $pluginPath,
             'primaryKey' => [],
             'persistentEntity' => $removePersistentEntity ? false : $usePersistentEntity,
+            'fileBuilder' => new FileBuilder($io, "{$namespace}\Model\Entity", $parsedFile),
         ];
 
-        $renderer = new TemplateRenderer($this->theme);
-        $renderer->set($data);
-        $out = $renderer->generate('Bake.Model/entity');
+        $contents = $this->createTemplateRenderer()
+            ->set($data)
+            ->generate('Bake.Model/entity');
 
-        $filename = $path . 'Entity' . DS . $name . '.php';
-        $io->out("\n" . sprintf('Baking entity class for %s...', $name), 1, ConsoleIo::NORMAL);
-        $io->createFile($filename, $out, $args->getOption('force'));
+        $this->writeFile($io, $filename, $contents, $this->force);
 
         if ($usePersistentEntity && !$removePersistentEntity) {
             if (!$persistentClassExists) {
-                $persistentOut = $renderer->generate('Bake.Model/persistent_entity');
+                $persistentOut = $this->createTemplateRenderer()
+                    ->set($data)
+                    ->generate('Bake.Model/persistent_entity');
+
                 $io->out(
                     "\n" . sprintf('Baking persistent entity class for %s...', $name),
                     1,
@@ -1080,13 +1209,23 @@ class ModelCommand extends BakeCommand
             return;
         }
 
+        $name = $model->getAlias();
+        $io->out("\n" . sprintf('Baking table class for %s...', $name), 1, ConsoleIo::NORMAL);
+
         $namespace = Configure::read('App.namespace');
         $pluginPath = '';
         if ($this->plugin) {
             $namespace = $this->_pluginNamespace($this->plugin);
         }
 
-        $name = $model->getAlias();
+        $path = $this->getPath($args);
+        $filename = $path . 'Table' . DS . $name . 'Table.php';
+
+        $parsedFile = null;
+        if ($args->getOption('update')) {
+            $parsedFile = $this->parseFile($filename);
+        }
+
         $entity = $this->_entityName($model->getAlias());
         $path = $this->getPath($args);
 
@@ -1117,19 +1256,21 @@ class ModelCommand extends BakeCommand
             'behaviors' => [],
             'connection' => $this->connection,
             'persistentTable' => $removePersistentTable ? false : $usePersistentTable,
+            'fileBuilder' => new FileBuilder($io, "{$namespace}\Model\Table", $parsedFile),
         ];
 
-        $renderer = new TemplateRenderer($this->theme);
-        $renderer->set($data);
-        $out = $renderer->generate('Bake.Model/table');
+        $contents = $this->createTemplateRenderer()
+            ->set($data)
+            ->generate('Bake.Model/table');
 
-        $filename = $path . 'Table' . DS . $name . 'Table.php';
-        $io->out("\n" . sprintf('Baking table class for %s...', $name), 1, ConsoleIo::NORMAL);
-        $io->createFile($filename, $out, $args->getOption('force'));
+        $this->writefile($io, $filename, $contents, $this->force);
 
         if ($usePersistentTable && !$removePersistentTable) {
             if (!$persistentClassExists) {
-                $persistentOut = $renderer->generate('Bake.Model/persistent_table');
+                $persistentOut = $this->createTemplateRenderer()
+                    ->set($data)
+                    ->generate('Bake.Model/persistent_table');
+
                 $io->out("\n" . sprintf('Baking persistent table class for %s...', $name), 1, ConsoleIo::QUIET);
                 $io->createFile($persistentTableFilePath, $persistentOut);
 
@@ -1166,7 +1307,7 @@ class ModelCommand extends BakeCommand
     /**
      * Outputs the a list of possible models or controllers from database
      *
-     * @return string[]
+     * @return array<string>
      */
     public function listAll(): array
     {
@@ -1185,7 +1326,7 @@ class ModelCommand extends BakeCommand
     /**
      * Outputs the a list of unskipped models or controllers from database
      *
-     * @return string[]
+     * @return array<string>
      */
     public function listUnskipped(): array
     {
@@ -1229,6 +1370,9 @@ class ModelCommand extends BakeCommand
         )->addArgument('name', [
             'help' => 'Name of the model to bake (without the Table suffix). ' .
                 'You can use Plugin.name to bake plugin models.',
+        ])->addOption('update', [
+            'boolean' => true,
+            'help' => 'Update generated methods in existing files. If the file doesn\'t exist it will be created.',
         ])->addOption('table', [
             'help' => 'The table name to use if you have non-conventional table names.',
         ])->addOption('no-entity', [
@@ -1273,6 +1417,10 @@ class ModelCommand extends BakeCommand
         ])->addOption('remove-persistent', [
             'boolean' => true,
             'help' => 'Remove persistent table / entity classes',
+        ])->addOption('skip-relation-check', [
+            'boolean' => true,
+            'help' => 'Generate relations for all "example_id" fields'
+            . ' without checking the database if a table "examples" exists.',
         ])->setEpilog(
             'Omitting all arguments and options will list the table names you can generate models for.'
         );

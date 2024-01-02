@@ -2,17 +2,17 @@
 declare(strict_types=1);
 
 /**
- * CakePHP : Rapid Development Framework (http://cakephp.org)
- * Copyright (c) Cake Software Foundation, Inc. (http://cakefoundation.org)
+ * CakePHP : Rapid Development Framework (https://cakephp.org)
+ * Copyright (c) Cake Software Foundation, Inc. (https://cakefoundation.org)
  *
  * Licensed under The MIT License
  * For full copyright and license information, please see the LICENSE.txt
  * Redistributions of files must retain the above copyright notice.
  *
- * @copyright     Copyright (c) Cake Software Foundation, Inc. (http://cakefoundation.org)
- * @link          http://cakephp.org CakePHP Project
+ * @copyright     Copyright (c) Cake Software Foundation, Inc. (https://cakefoundation.org)
+ * @link          https://cakephp.org CakePHP Project
  * @since         2.0.0
- * @license       http://www.opensource.org/licenses/mit-license.php MIT License
+ * @license       https://www.opensource.org/licenses/mit-license.php MIT License
  */
 namespace Bake\Utility;
 
@@ -30,16 +30,16 @@ class SubsetSchemaCollection implements CollectionInterface
     /**
      * @var \Cake\Database\Schema\CollectionInterface
      */
-    protected $collection;
+    protected CollectionInterface $collection;
 
     /**
-     * @var string[]
+     * @var array<string>
      */
-    protected $tables = [];
+    protected array $tables = [];
 
     /**
      * @param \Cake\Database\Schema\CollectionInterface $collection The wrapped collection
-     * @param string[] $tables The subset of tables.
+     * @param array<string> $tables The subset of tables.
      */
     public function __construct(CollectionInterface $collection, array $tables)
     {
@@ -60,7 +60,7 @@ class SubsetSchemaCollection implements CollectionInterface
     /**
      * Get the list of tables in this schema collection.
      *
-     * @return string[]
+     * @return array<string>
      */
     public function listTables(): array
     {

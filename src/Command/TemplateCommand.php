@@ -2,23 +2,22 @@
 declare(strict_types=1);
 
 /**
- * CakePHP(tm) : Rapid Development Framework (http://cakephp.org)
- * Copyright (c) Cake Software Foundation, Inc. (http://cakefoundation.org)
+ * CakePHP(tm) : Rapid Development Framework (https://cakephp.org)
+ * Copyright (c) Cake Software Foundation, Inc. (https://cakefoundation.org)
  *
  * Licensed under The MIT License
  * For full copyright and license information, please see the LICENSE.txt
  * Redistributions of files must retain the above copyright notice.
  *
- * @copyright     Copyright (c) Cake Software Foundation, Inc. (http://cakefoundation.org)
- * @link          http://cakephp.org CakePHP(tm) Project
+ * @copyright     Copyright (c) Cake Software Foundation, Inc. (https://cakefoundation.org)
+ * @link          https://cakephp.org CakePHP(tm) Project
  * @since         0.1.0
- * @license       http://www.opensource.org/licenses/mit-license.php MIT License
+ * @license       https://www.opensource.org/licenses/mit-license.php MIT License
  */
 namespace Bake\Command;
 
 use Bake\Utility\Model\AssociationFilter;
 use Bake\Utility\TableScanner;
-use Bake\Utility\TemplateRenderer;
 use Cake\Console\Arguments;
 use Cake\Console\ConsoleIo;
 use Cake\Console\ConsoleOptionParser;
@@ -29,7 +28,9 @@ use Cake\Datasource\EntityInterface;
 use Cake\ORM\Table;
 use Cake\Utility\Inflector;
 use Cake\View\Exception\MissingTemplateException;
+use Exception;
 use RuntimeException;
+use function Cake\Core\namespaceSplit;
 
 /**
  * Task class for creating view template files.
@@ -41,49 +42,56 @@ class TemplateCommand extends BakeCommand
      *
      * @var string
      */
-    public $controllerName;
+    public string $controllerName;
 
     /**
      * Classname of the controller being used
      *
      * @var string
      */
-    public $controllerClass;
+    public string $controllerClass;
 
     /**
      * Name with plugin of the model being used
      *
      * @var string
      */
-    public $modelName = null;
+    public string $modelName;
 
     /**
      * Actions to use for scaffolding
      *
-     * @var string[]
+     * @var array<string>
      */
-    public $scaffoldActions = ['index', 'view', 'add', 'edit'];
+    public array $scaffoldActions = ['index', 'view', 'add', 'edit'];
 
     /**
      * Actions that exclude hidden fields
      *
-     * @var string[]
+     * @var array<string>
      */
-    public $excludeHiddenActions = ['index', 'view'];
+    public array $excludeHiddenActions = ['index', 'view'];
 
     /**
      * AssociationFilter utility
      *
      * @var \Bake\Utility\Model\AssociationFilter|null
      */
-    protected $_associationFilter;
+    protected ?AssociationFilter $_associationFilter = null;
 
     /**
      * Template path.
      *
      * @var string
      */
-    public $path;
+    public string $path;
+
+    /**
+     * Output extension
+     *
+     * @var string
+     */
+    public string $ext = 'php';
 
     /**
      * Override initialize
@@ -213,7 +221,7 @@ class TemplateCommand extends BakeCommand
     /**
      * Get a list of actions that can / should have view templates baked for them.
      *
-     * @return string[] Array of action names that should be baked
+     * @return array<string> Array of action names that should be baked
      */
     protected function _methodsToBake(): array
     {
@@ -287,7 +295,7 @@ class TemplateCommand extends BakeCommand
             $fields = $schema->columns();
             $hidden = $modelObject->newEmptyEntity()->getHidden() ?: ['token', 'password', 'passwd'];
             $modelClass = $this->modelName;
-        } catch (\Exception $exception) {
+        } catch (Exception $exception) {
             $io->error($exception->getMessage());
             $this->abort();
         }
@@ -341,7 +349,7 @@ class TemplateCommand extends BakeCommand
         Arguments $args,
         ConsoleIo $io,
         string $template,
-        $content = '',
+        string|bool $content = '',
         ?string $outputFile = null
     ): void {
         if ($outputFile === null) {
@@ -351,15 +359,16 @@ class TemplateCommand extends BakeCommand
             $content = $this->getContent($args, $io, $template);
         }
         if (empty($content)) {
-            $io->err("<warning>No generated content for '{$template}.php', not generating template.</warning>");
+            // phpcs:ignore Generic.Files.LineLength
+            $io->err("<warning>No generated content for '{$template}.{$this->ext}', not generating template.</warning>");
 
             return;
         }
         $path = $this->getTemplatePath($args);
-        $filename = $path . Inflector::underscore($outputFile) . '.php';
+        $filename = $path . Inflector::underscore($outputFile) . '.' . $this->ext;
 
         $io->out("\n" . sprintf('Baking `%s` view template file...', $outputFile), 1, ConsoleIo::NORMAL);
-        $io->createFile($filename, $content, $args->getOption('force'));
+        $io->createFile($filename, $content, $this->force);
     }
 
     /**
@@ -386,10 +395,10 @@ class TemplateCommand extends BakeCommand
             $vars['fields'] = array_diff($vars['fields'], $vars['hidden']);
         }
 
-        $renderer = new TemplateRenderer($args->getOption('theme'));
-        $renderer->set('action', $action);
-        $renderer->set('plugin', $this->plugin);
-        $renderer->set($vars);
+        $renderer = $this->createTemplateRenderer()
+            ->set('action', $action)
+            ->set('plugin', $this->plugin)
+            ->set($vars);
 
         $indexColumns = 0;
         if ($action === 'index' && $args->getOption('index-columns') !== null) {
@@ -424,7 +433,7 @@ class TemplateCommand extends BakeCommand
             'help' => 'The routing prefix to generate views for.',
         ])->addOption('index-columns', [
             'help' => 'Limit for the number of index columns',
-            'default' => 0,
+            'default' => '0',
         ]);
 
         return $parser;

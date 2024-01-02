@@ -2,27 +2,33 @@
 declare(strict_types=1);
 
 /**
- * CakePHP(tm) : Rapid Development Framework (http://cakephp.org)
- * Copyright (c) Cake Software Foundation, Inc. (http://cakefoundation.org)
+ * CakePHP(tm) : Rapid Development Framework (https://cakephp.org)
+ * Copyright (c) Cake Software Foundation, Inc. (https://cakefoundation.org)
  *
  * Licensed under The MIT License
  * For full copyright and license information, please see the LICENSE.txt
  * Redistributions of files must retain the above copyright notice.
  *
- * @copyright     Copyright (c) Cake Software Foundation, Inc. (http://cakefoundation.org)
- * @link          http://cakephp.org CakePHP(tm) Project
+ * @copyright     Copyright (c) Cake Software Foundation, Inc. (https://cakefoundation.org)
+ * @link          https://cakephp.org CakePHP(tm) Project
  * @since         2.0.0
- * @license       http://www.opensource.org/licenses/mit-license.php MIT License
+ * @license       https://www.opensource.org/licenses/mit-license.php MIT License
  */
 namespace Bake\Command;
 
+use Bake\CodeGen\CodeParser;
+use Bake\CodeGen\ParsedFile;
 use Bake\Utility\CommonOptionsTrait;
+use Bake\Utility\TemplateRenderer;
 use Cake\Command\Command;
 use Cake\Console\Arguments;
 use Cake\Console\ConsoleIo;
 use Cake\Core\Configure;
 use Cake\Core\ConventionsTrait;
+use Cake\Event\Event;
+use Cake\Event\EventManager;
 use InvalidArgumentException;
+use function Cake\Core\pluginSplit;
 
 /**
  * Base class for commands that bake can use.
@@ -40,7 +46,7 @@ abstract class BakeCommand extends Command
      *
      * @var string
      */
-    protected $pathFragment;
+    protected string $pathFragment;
 
     /**
      * Get the command name.
@@ -151,6 +157,19 @@ abstract class BakeCommand extends Command
     }
 
     /**
+     * Creates a new instance of TemplateRenderer with theme set.
+     *
+     * @return \Bake\Utility\TemplateRenderer
+     */
+    public function createTemplateRenderer(): TemplateRenderer
+    {
+        $renderer = new TemplateRenderer($this->theme);
+        EventManager::instance()->dispatch(new Event('Bake.renderer', $renderer));
+
+        return $renderer;
+    }
+
+    /**
      * Delete empty file in a given path
      *
      * @param string $path Path to folder which contains 'empty' file.
@@ -178,5 +197,48 @@ abstract class BakeCommand extends Command
     protected function isValidColumnName(string $name): bool
     {
         return (bool)preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $name);
+    }
+
+    /**
+     * Parses a file if it exists.
+     *
+     * @param string $path File path
+     * @return \Bake\CodeGen\ParsedFile|null
+     */
+    protected function parseFile(string $path): ?ParsedFile
+    {
+        if (file_exists($path)) {
+            return (new CodeParser())->parseFile(file_get_contents($path));
+        }
+
+        return null;
+    }
+
+    /**
+     * Write file contents out to path and prompt user with options with file exists.
+     *
+     * @param \Cake\Console\ConsoleIo $io Console io
+     * @param string $path The path to create the file at
+     * @param string $contents The contents to put into the file
+     * @param bool $forceOverwrite Whether the file should be overwritten without prompting the user
+     * @param bool $skipIfUnchanged Skip writing output if the contents match existing file
+     * @return bool True if successful, false otherwise
+     * @throws \Cake\Console\Exception\StopException When `q` is given as an answer
+     *   to whether a file should be overwritten.
+     */
+    protected function writeFile(
+        ConsoleIo $io,
+        string $path,
+        string $contents,
+        bool $forceOverwrite = false,
+        bool $skipIfUnchanged = true
+    ): bool {
+        if ($skipIfUnchanged && file_exists($path) && file_get_contents($path) === $contents) {
+            $io->info("Skipping update to `{$path}`. It already exists and would not change.");
+
+            return true;
+        }
+
+        return $io->createFile($path, $contents, $forceOverwrite);
     }
 }

@@ -2,17 +2,17 @@
 declare(strict_types=1);
 
 /**
- * CakePHP(tm) : Rapid Development Framework (http://cakephp.org)
- * Copyright (c) Cake Software Foundation, Inc. (http://cakefoundation.org)
+ * CakePHP(tm) : Rapid Development Framework (https://cakephp.org)
+ * Copyright (c) Cake Software Foundation, Inc. (https://cakefoundation.org)
  *
  * Licensed under The MIT License
  * For full copyright and license information, please see the LICENSE.txt
  * Redistributions of files must retain the above copyright notice.
  *
- * @copyright     Copyright (c) Cake Software Foundation, Inc. (http://cakefoundation.org)
- * @link          http://cakephp.org CakePHP(tm) Project
+ * @copyright     Copyright (c) Cake Software Foundation, Inc. (https://cakefoundation.org)
+ * @link          https://cakephp.org CakePHP(tm) Project
  * @since         2.0.0
- * @license       http://www.opensource.org/licenses/mit-license.php MIT License
+ * @license       https://www.opensource.org/licenses/mit-license.php MIT License
  */
 namespace Bake\Test\TestCase\Command;
 
@@ -31,7 +31,7 @@ class AllCommandTest extends TestCase
      *
      * @var array<string>
      */
-    protected $fixtures = [
+    protected array $fixtures = [
         'plugin.Bake.Products',
         'plugin.Bake.ProductVersions',
     ];
@@ -39,7 +39,7 @@ class AllCommandTest extends TestCase
     /**
      * @var array<string>
      */
-    protected $tables = ['products', 'product_versions'];
+    protected array $tables = ['products', 'product_versions'];
 
     /**
      * setUp method
@@ -51,7 +51,6 @@ class AllCommandTest extends TestCase
         parent::setUp();
 
         $this->setAppNamespace('Bake\Test\App');
-        $this->useCommandRunner();
 
         $connection = ConnectionManager::get('test');
         $subsetCollection = new SubsetSchemaCollection($connection->getSchemaCollection(), $this->tables);
@@ -188,7 +187,7 @@ class AllCommandTest extends TestCase
     }
 
     /**
-     * Test docblock @uses generated for test methods
+     * Test docblock @ uses generated for test methods
      *
      * @return void
      */

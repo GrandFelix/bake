@@ -2,17 +2,17 @@
 declare(strict_types=1);
 
 /**
- * CakePHP(tm) : Rapid Development Framework (http://cakephp.org)
- * Copyright (c) Cake Software Foundation, Inc. (http://cakefoundation.org)
+ * CakePHP(tm) : Rapid Development Framework (https://cakephp.org)
+ * Copyright (c) Cake Software Foundation, Inc. (https://cakefoundation.org)
  *
  * Licensed under The MIT License
  * For full copyright and license information, please see the LICENSE.txt
  * Redistributions of files must retain the above copyright notice.
  *
- * @copyright     Copyright (c) Cake Software Foundation, Inc. (http://cakefoundation.org)
- * @link          http://cakephp.org CakePHP(tm) Project
+ * @copyright     Copyright (c) Cake Software Foundation, Inc. (https://cakefoundation.org)
+ * @link          https://cakephp.org CakePHP(tm) Project
  * @since         2.0.0
- * @license       http://www.opensource.org/licenses/mit-license.php MIT License
+ * @license       https://www.opensource.org/licenses/mit-license.php MIT License
  */
 namespace Bake\Test\TestCase\Command;
 
@@ -34,7 +34,6 @@ class EntryCommandTest extends TestCase
         parent::setUp();
 
         $this->setAppNamespace('Bake\Test\App');
-        $this->useCommandRunner();
     }
 
     /**
@@ -62,15 +61,15 @@ class EntryCommandTest extends TestCase
         $this->assertOutputContains('bake controller');
         $this->assertOutputContains('bake controller all');
         $this->assertOutputContains('bake command');
-        $this->assertOutputContains('shell_helper');
+        $this->assertOutputContains('command_helper');
     }
 
     /**
-     * Test execute() calling an app task
+     * Test execute() calling an app command
      *
      * @return void
      */
-    public function testExecuteAppTask()
+    public function testExecuteAppCommand()
     {
         $this->exec('bake app_policy');
         $this->assertExitCode(CommandInterface::CODE_SUCCESS);
@@ -92,15 +91,15 @@ class EntryCommandTest extends TestCase
     }
 
     /**
-     * Test execute() calling a plugin task
+     * Test execute() calling a plugin command
      *
      * @return void
      */
-    public function testExecutePluginTask()
+    public function testExecutePluginCommand()
     {
         $this->_loadTestPlugin('BakeTest');
 
-        $this->exec('bake zerg --verbose');
+        $this->exec('bake zergling --verbose');
 
         $this->assertExitCode(CommandInterface::CODE_SUCCESS);
         $this->assertOutputContains('Zerg generated');
@@ -108,15 +107,15 @@ class EntryCommandTest extends TestCase
     }
 
     /**
-     * Test execute() error on a missing task
+     * Test execute() error on a missing command
      *
      * @return void
      */
-    public function testExecuteMissingTask()
+    public function testExecuteMissingCommand()
     {
         $this->exec('bake nope');
 
         $this->assertExitCode(CommandInterface::CODE_ERROR);
-        $this->assertErrorContains('Could not find');
+        $this->assertErrorContains('Could not find bake command named `nope`');
     }
 }

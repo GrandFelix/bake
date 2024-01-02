@@ -228,6 +228,19 @@ return [
         'constraints' => ['primary' => ['type' => 'primary', 'columns' => ['id']]],
     ],
     [
+        'table' => 'cars',
+        'columns' => [
+            'id' => ['type' => 'integer'],
+            'bake_user_id' => ['type' => 'integer', 'null' => false],
+            'title' => ['type' => 'string', 'null' => false],
+            'body' => 'text',
+            'published' => ['type' => 'boolean', 'length' => 1, 'default' => false],
+            'created' => 'datetime',
+            'updated' => 'datetime',
+        ],
+        'constraints' => ['primary' => ['type' => 'primary', 'columns' => ['id']]],
+    ],
+    [
         'table' => 'bake_comments',
         'columns' => [
             'otherid' => ['type' => 'integer'],
@@ -359,6 +372,17 @@ return [
         'constraints' => ['primary' => ['type' => 'primary', 'columns' => ['id']]],
     ],
     [
+        'table' => 'bake_users',
+        'columns' => [
+            'id' => ['type' => 'integer'],
+            'username' => ['type' => 'string', 'null' => true, 'length' => 255],
+            'password' => ['type' => 'string', 'null' => true, 'length' => 255],
+            'created' => ['type' => 'timestamp', 'null' => true],
+            'updated' => ['type' => 'timestamp', 'null' => true],
+        ],
+        'constraints' => ['primary' => ['type' => 'primary', 'columns' => ['id']]],
+    ],
+    [
         'table' => 'invitations',
         'columns' => [
             'id' => ['type' => 'integer'],
@@ -443,6 +467,18 @@ return [
         'constraints' => ['primary' => ['type' => 'primary', 'columns' => ['id']]],
     ],
     [
+        'table' => 'todo_reminders',
+        'columns' => [
+            'id' => ['type' => 'integer', 'null' => false],
+            'todo_item_id' => ['type' => 'integer', 'null' => false],
+            'triggered_at' => ['type' => 'datetime'],
+        ],
+        'constraints' => [
+            'primary' => ['type' => 'primary', 'columns' => ['id']],
+            'unique_todo_item' => ['type' => 'unique', 'columns' => ['todo_item_id']],
+        ],
+    ],
+    [
         'table' => 'todo_labels',
         'columns' => [
             'id' => ['type' => 'integer'],
@@ -509,6 +545,17 @@ return [
                     'field_2',
                 ],
             ],
+        ],
+    ],
+    [
+        'table' => 'self_referencing_unique_keys',
+        'columns' => [
+            'id' => ['type' => 'integer'],
+            'parent_id' => ['type' => 'integer'],
+        ],
+        'constraints' => [
+            'primary' => ['type' => 'primary', 'columns' => ['id']],
+            'unique_self_referencing_parent' => ['type' => 'unique', 'columns' => ['parent_id']],
         ],
     ],
 ];

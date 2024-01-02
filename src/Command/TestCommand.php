@@ -2,36 +2,35 @@
 declare(strict_types=1);
 
 /**
- * CakePHP(tm) : Rapid Development Framework (http://cakephp.org)
- * Copyright (c) Cake Software Foundation, Inc. (http://cakefoundation.org)
+ * CakePHP(tm) : Rapid Development Framework (https://cakephp.org)
+ * Copyright (c) Cake Software Foundation, Inc. (https://cakefoundation.org)
  *
  * Licensed under The MIT License
  * For full copyright and license information, please see the LICENSE.txt
  * Redistributions of files must retain the above copyright notice.
  *
- * @copyright     Copyright (c) Cake Software Foundation, Inc. (http://cakefoundation.org)
- * @link          http://cakephp.org CakePHP(tm) Project
+ * @copyright     Copyright (c) Cake Software Foundation, Inc. (https://cakefoundation.org)
+ * @link          https://cakephp.org CakePHP(tm) Project
  * @since         0.1.0
- * @license       http://www.opensource.org/licenses/mit-license.php MIT License
+ * @license       https://www.opensource.org/licenses/mit-license.php MIT License
  */
 namespace Bake\Command;
 
-use Bake\Utility\TemplateRenderer;
 use Cake\Console\Arguments;
 use Cake\Console\ConsoleIo;
 use Cake\Console\ConsoleOptionParser;
-use Cake\Console\Shell;
 use Cake\Controller\Controller;
 use Cake\Core\Configure;
 use Cake\Core\Exception\CakeException;
 use Cake\Core\Plugin;
-use Cake\Filesystem\Filesystem;
-use Cake\Http\Response;
 use Cake\Http\ServerRequest as Request;
 use Cake\ORM\Table;
+use Cake\Utility\Filesystem;
 use Cake\Utility\Inflector;
 use ReflectionClass;
 use UnexpectedValueException;
+use function Cake\Core\namespaceSplit;
+use function Cake\Core\pluginSplit;
 
 /**
  * Command class for generating test files.
@@ -41,62 +40,58 @@ class TestCommand extends BakeCommand
     /**
      * class types that methods can be generated for
      *
-     * @var string[]
+     * @var array<string>
      */
-    public $classTypes = [
+    public array $classTypes = [
         'Entity' => 'Model\Entity',
         'Table' => 'Model\Table',
         'Controller' => 'Controller',
         'Component' => 'Controller\Component',
         'Behavior' => 'Model\Behavior',
         'Helper' => 'View\Helper',
-        'Shell' => 'Shell',
-        'Task' => 'Shell\Task',
-        'ShellHelper' => 'Shell\Helper',
         'Cell' => 'View\Cell',
         'Form' => 'Form',
         'Mailer' => 'Mailer',
         'Command' => 'Command',
         'CommandHelper' => 'Command\Helper',
+        'Middleware' => 'Middleware',
     ];
 
     /**
      * class types that methods can be generated for
      *
-     * @var string[]
+     * @var array<string>
      */
-    public $classSuffixes = [
+    public array $classSuffixes = [
         'Entity' => '',
         'Table' => 'Table',
         'Controller' => 'Controller',
         'Component' => 'Component',
         'Behavior' => 'Behavior',
         'Helper' => 'Helper',
-        'Shell' => 'Shell',
-        'Task' => 'Task',
-        'ShellHelper' => 'Helper',
         'Cell' => 'Cell',
         'Form' => 'Form',
         'Mailer' => 'Mailer',
         'Command' => 'Command',
         'CommandHelper' => 'Helper',
+        'Middleware' => 'Middleware',
     ];
 
     /**
      * Blacklisted methods for controller test cases.
      *
-     * @var string[]
+     * @var array<string>
      */
-    protected $blacklistedMethods = [
+    protected array $blacklistedMethods = [
         'initialize',
     ];
 
     /**
      * Internal list of fixtures that have been added so far.
      *
-     * @var string[]
+     * @var array<string>
      */
-    protected $_fixtures = [];
+    protected array $_fixtures = [];
 
     /**
      * Execute test generation
@@ -206,7 +201,7 @@ class TestCommand extends BakeCommand
      * Get the possible classes for a given type.
      *
      * @param string $namespace The namespace fragment to look for classes in.
-     * @return string[]
+     * @return array<string>
      */
     protected function _getClassOptions(string $namespace): array
     {
@@ -237,7 +232,7 @@ class TestCommand extends BakeCommand
      * @param \Cake\Console\ConsoleIo $io ConsoleIo instance
      * @return string|bool
      */
-    public function bake(string $type, string $className, Arguments $args, ConsoleIo $io)
+    public function bake(string $type, string $className, Arguments $args, ConsoleIo $io): string|bool
     {
         $type = $this->normalize($type);
         if (!isset($this->classSuffixes[$type]) || !isset($this->classTypes[$type])) {
@@ -277,34 +272,34 @@ class TestCommand extends BakeCommand
 
         $properties = $this->generateProperties($type, $subject, $fullClassName);
 
-        $io->out("\n" . sprintf('Baking test case for %s ...', $fullClassName), 1, Shell::QUIET);
+        $io->out("\n" . sprintf('Baking test case for %s ...', $fullClassName), 1, ConsoleIo::QUIET);
 
-        $renderer = new TemplateRenderer($this->theme);
-        $renderer->set('fixtures', $this->_fixtures);
-        $renderer->set('plugin', $this->plugin);
-        $renderer->set(compact(
-            'subject',
-            'className',
-            'properties',
-            'methods',
-            'type',
-            'fullClassName',
-            'mock',
-            'preConstruct',
-            'postConstruct',
-            'construction',
-            'uses',
-            'baseNamespace',
-            'subNamespace',
-            'namespace'
-        ));
-        $out = $renderer->generate('Bake.tests/test_case');
+        $contents = $this->createTemplateRenderer()
+            ->set('fixtures', $this->_fixtures)
+            ->set('plugin', $this->plugin)
+            ->set(compact(
+                'subject',
+                'className',
+                'properties',
+                'methods',
+                'type',
+                'fullClassName',
+                'mock',
+                'preConstruct',
+                'postConstruct',
+                'construction',
+                'uses',
+                'baseNamespace',
+                'subNamespace',
+                'namespace'
+            ))
+            ->generate('Bake.tests/test_case');
 
         $filename = $this->testCaseFileName($type, $fullClassName);
         $emptyFile = dirname($filename) . DS . '.gitkeep';
         $this->deleteEmptyFile($emptyFile, $io);
-        if ($io->createFile($filename, $out, $args->getOption('force'))) {
-            return $out;
+        if ($io->createFile($filename, $contents, $this->force)) {
+            return $contents;
         }
 
         return false;
@@ -330,7 +325,7 @@ class TestCommand extends BakeCommand
      * @param string $class The classname of the class the test is being generated for.
      * @return object And instance of the class that is going to be tested.
      */
-    public function buildTestSubject(string $type, string $class)
+    public function buildTestSubject(string $type, string $class): object
     {
         if ($type === 'Table') {
             [, $name] = namespaceSplit($class);
@@ -346,7 +341,7 @@ class TestCommand extends BakeCommand
                 ]);
             }
         } elseif ($type === 'Controller') {
-            $instance = new $class(new Request(), new Response());
+            $instance = new $class(new Request());
         } else {
             $instance = new $class();
         }
@@ -415,7 +410,7 @@ class TestCommand extends BakeCommand
      * No parent methods will be returned
      *
      * @param string $className Name of class to look at.
-     * @return string[] Array of method names.
+     * @return array<string> Array of method names.
      * @throws \ReflectionException
      */
     public function getTestableMethods(string $className): array
@@ -440,14 +435,14 @@ class TestCommand extends BakeCommand
      * loaded models.
      *
      * @param \Cake\ORM\Table|\Cake\Controller\Controller $subject The object you want to generate fixtures for.
-     * @return string[] Array of fixtures to be included in the test.
+     * @return array<string> Array of fixtures to be included in the test.
      */
-    public function generateFixtureList($subject): array
+    public function generateFixtureList(Table|Controller $subject): array
     {
         $this->_fixtures = [];
         if ($subject instanceof Table) {
             $this->_processModel($subject);
-        } elseif ($subject instanceof Controller) {
+        } else {
             $this->_processController($subject);
         }
 
@@ -489,7 +484,7 @@ class TestCommand extends BakeCommand
     protected function _processController(Controller $subject): void
     {
         try {
-            $model = $subject->loadModel();
+            $model = $subject->fetchTable();
         } catch (UnexpectedValueException $exception) {
             // No fixtures needed or possible
             return;
@@ -537,7 +532,7 @@ class TestCommand extends BakeCommand
      *
      * @param string $type The Type of object you are generating tests for eg. controller
      * @param string $fullClassName The full classname of the class the test is being generated for.
-     * @return string[] Constructor snippets for the thing you are building.
+     * @return array<string> Constructor snippets for the thing you are building.
      */
     public function generateConstructor(string $type, string $fullClassName): array
     {
@@ -560,27 +555,16 @@ class TestCommand extends BakeCommand
             $pre = '$view = new View();';
             $construct = "new {$className}(\$view);";
         }
-        if ($type === 'Command') {
-            $construct = '$this->useCommandRunner();';
-        }
         if ($type === 'Component') {
             $pre = '$registry = new ComponentRegistry();';
             $construct = "new {$className}(\$registry);";
-        }
-        if ($type === 'Shell') {
-            $pre = "\$this->io = \$this->getMockBuilder('Cake\Console\ConsoleIo')->getMock();";
-            $construct = "new {$className}(\$this->io);";
-        }
-        if ($type === 'Task') {
-            $pre = "\$this->io = \$this->getMockBuilder('Cake\Console\ConsoleIo')->getMock();";
-            $construct = "new {$className}(\$this->io);";
         }
         if ($type === 'Cell') {
             $pre = "\$this->request = \$this->getMockBuilder('Cake\Http\ServerRequest')->getMock();\n";
             $pre .= "        \$this->response = \$this->getMockBuilder('Cake\Http\Response')->getMock();";
             $construct = "new {$className}(\$this->request, \$this->response);";
         }
-        if ($type === 'ShellHelper' || $type === 'CommandHelper') {
+        if ($type === 'CommandHelper') {
             $pre = "\$this->stub = new ConsoleOutput();\n";
             $pre .= '        $this->io = new ConsoleIo($this->stub);';
             $construct = "new {$className}(\$this->io);";
@@ -621,17 +605,7 @@ class TestCommand extends BakeCommand
                 ];
                 break;
 
-            case 'Shell':
-            case 'Task':
-                $properties[] = [
-                    'description' => 'ConsoleIo mock',
-                    'type' => '\Cake\Console\ConsoleIo|\PHPUnit\Framework\MockObject\MockObject',
-                    'name' => 'io',
-                ];
-                break;
-
             case 'CommandHelper':
-            case 'ShellHelper':
                 $properties[] = [
                     'description' => 'ConsoleOutput stub',
                     'type' => '\Cake\TestSuite\Stub\ConsoleOutput',
@@ -661,7 +635,7 @@ class TestCommand extends BakeCommand
      *
      * @param string $type The Type of object you are generating tests for eg. controller
      * @param string $fullClassName The Classname of the class the test is being generated for.
-     * @return string[] An array containing used classes
+     * @return array<string> An array containing used classes
      */
     public function generateUses(string $type, string $fullClassName): array
     {
@@ -672,7 +646,7 @@ class TestCommand extends BakeCommand
         if ($type === 'Helper') {
             $uses[] = 'Cake\View\View';
         }
-        if ($type === 'ShellHelper' || $type === 'CommandHelper') {
+        if ($type === 'CommandHelper') {
             $uses[] = 'Cake\TestSuite\Stub\ConsoleOutput';
             $uses[] = 'Cake\Console\ConsoleIo';
         }

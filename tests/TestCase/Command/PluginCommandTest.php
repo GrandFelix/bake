@@ -2,17 +2,17 @@
 declare(strict_types=1);
 
 /**
- * CakePHP : Rapid Development Framework (http://cakephp.org)
- * Copyright (c) Cake Software Foundation, Inc. (http://cakefoundation.org)
+ * CakePHP : Rapid Development Framework (https://cakephp.org)
+ * Copyright (c) Cake Software Foundation, Inc. (https://cakefoundation.org)
  *
  * Licensed under The MIT License
  * For full copyright and license information, please see the LICENSE.txt
  * Redistributions of files must retain the above copyright notice.
  *
- * @copyright     Copyright (c) Cake Software Foundation, Inc. (http://cakefoundation.org)
- * @link          http://cakephp.org CakePHP Project
+ * @copyright     Copyright (c) Cake Software Foundation, Inc. (https://cakefoundation.org)
+ * @link          https://cakephp.org CakePHP Project
  * @since         0.1.0
- * @license       http://www.opensource.org/licenses/mit-license.php MIT License
+ * @license       https://www.opensource.org/licenses/mit-license.php MIT License
  */
 namespace Bake\Test\TestCase\Command;
 
@@ -24,7 +24,7 @@ use Cake\Console\Exception\StopException;
 use Cake\Core\App;
 use Cake\Core\Configure;
 use Cake\Core\Plugin;
-use Cake\Filesystem\Filesystem;
+use Cake\Utility\Filesystem;
 use SplFileInfo;
 
 /**
@@ -33,6 +33,8 @@ use SplFileInfo;
 class PluginCommandTest extends TestCase
 {
     protected $testAppFile = APP . 'Application.php';
+
+    protected $pluginsPath = TMP . 'plugin_task' . DS;
 
     /**
      * setUp method
@@ -44,14 +46,14 @@ class PluginCommandTest extends TestCase
         parent::setUp();
         $this->_compareBasePath = Plugin::path('Bake') . 'tests' . DS . 'comparisons' . DS . 'Plugin' . DS;
         $this->setAppNamespace('Bake\Test\App');
-        $this->useCommandRunner();
 
         // Output into a safe place.
-        $path = TMP . 'plugin_task' . DS;
-        Configure::write('App.paths.plugins', [$path]);
+        Configure::write('App.paths.plugins', [$this->pluginsPath]);
 
         // Create the test output path
-        mkdir($path, 0777, true);
+        if (!file_exists($this->pluginsPath)) {
+            mkdir($this->pluginsPath, 0777, true);
+        }
 
         if (file_exists(APP . 'Application.php.bak')) {
             rename(APP . 'Application.php.bak', APP . 'Application.php');
@@ -68,7 +70,7 @@ class PluginCommandTest extends TestCase
     public function tearDown(): void
     {
         $fs = new Filesystem();
-        $fs->deleteDir(TMP . 'plugin_task');
+        $fs->deleteDir($this->pluginsPath);
 
         if (file_exists(APP . 'Application.php.bak')) {
             rename(APP . 'Application.php.bak', APP . 'Application.php');
@@ -84,6 +86,16 @@ class PluginCommandTest extends TestCase
      */
     public function testMainBakePluginContents()
     {
+        $this->exec('bake plugin SimpleExample', ['y', 'n']);
+        $this->assertExitCode(CommandInterface::CODE_SUCCESS);
+        $this->assertPluginContents('SimpleExample');
+    }
+
+    public function testBakingWithNonExistentPluginsDir()
+    {
+        $fs = new Filesystem();
+        $fs->deleteDir($this->pluginsPath);
+
         $this->exec('bake plugin SimpleExample', ['y', 'n']);
         $this->assertExitCode(CommandInterface::CODE_SUCCESS);
         $this->assertPluginContents('SimpleExample');
@@ -166,25 +178,6 @@ class PluginCommandTest extends TestCase
 
         $this->assertExitCode(CommandInterface::CODE_SUCCESS);
 
-        $result = json_decode(file_get_contents(ROOT . 'composer.json'), true);
-        $this->assertArrayHasKey('autoload', $result);
-        $this->assertArrayHasKey('psr-4', $result['autoload']);
-        $this->assertArrayHasKey('ComposerExample\\', $result['autoload']['psr-4']);
-
-        $this->assertArrayHasKey('autoload-dev', $result);
-        $this->assertArrayHasKey('psr-4', $result['autoload-dev']);
-        $this->assertArrayHasKey('ComposerExample\\Test\\', $result['autoload-dev']['psr-4']);
-
-        $pluginPath = App::path('plugins')[0];
-        $this->assertSame(
-            $pluginPath . 'ComposerExample' . DS . 'src' . DS,
-            $result['autoload']['psr-4']['ComposerExample\\']
-        );
-        $this->assertSame(
-            $pluginPath . 'ComposerExample' . DS . 'tests' . DS,
-            $result['autoload-dev']['psr-4']['ComposerExample\\Test\\']
-        );
-
         // Restore
         copy(ROOT . 'composer.json.bak', $composerConfig);
         unlink(ROOT . 'composer.json.bak');
@@ -211,7 +204,7 @@ class PluginCommandTest extends TestCase
         $result = $command->findPath($paths, $io);
 
         $this->assertNull($result, 'no return');
-        $this->assertSame(TMP . 'plugin_task' . DS, $command->path);
+        $this->assertSame($this->pluginsPath, $command->path);
     }
 
     /**
@@ -256,8 +249,8 @@ class PluginCommandTest extends TestCase
         );
 
         foreach ($comparisonFiles as $key => $file) {
-            $result = file_get_contents($file);
-            $this->assertSameAsFile($bakedFiles[$key], $result);
+            $result = file_get_contents($bakedFiles[$key]);
+            $this->assertSameAsFile($file, $result);
         }
     }
 

@@ -2,17 +2,17 @@
 declare(strict_types=1);
 
 /**
- * CakePHP(tm) : Rapid Development Framework (http://cakephp.org)
- * Copyright (c) Cake Software Foundation, Inc. (http://cakefoundation.org)
+ * CakePHP(tm) : Rapid Development Framework (https://cakephp.org)
+ * Copyright (c) Cake Software Foundation, Inc. (https://cakefoundation.org)
  *
  * Licensed under The MIT License
  * For full copyright and license information, please see the LICENSE.txt
  * Redistributions of files must retain the above copyright notice.
  *
- * @copyright     Copyright (c) Cake Software Foundation, Inc. (http://cakefoundation.org)
- * @link          http://cakephp.org CakePHP(tm) Project
+ * @copyright     Copyright (c) Cake Software Foundation, Inc. (https://cakefoundation.org)
+ * @link          https://cakephp.org CakePHP(tm) Project
  * @since         0.1.0
- * @license       http://www.opensource.org/licenses/mit-license.php MIT License
+ * @license       https://www.opensource.org/licenses/mit-license.php MIT License
  */
 namespace Bake\Test\TestCase\Command;
 
@@ -35,7 +35,6 @@ class SimpleBakeCommandTest extends TestCase
         parent::setUp();
         $this->_compareBasePath = Plugin::path('Bake') . 'tests' . DS . 'comparisons' . DS
             . 'Plugin' . DS . 'Simple' . DS;
-        $this->useCommandRunner();
         $this->setAppNamespace('Bake\Test\App');
     }
 
@@ -131,7 +130,7 @@ class SimpleBakeCommandTest extends TestCase
      *
      * @return string[][]
      */
-    public function subclassProvider()
+    public static function subclassProvider()
     {
         return [
             ['Bake\Command\BehaviorCommand'],
@@ -139,7 +138,7 @@ class SimpleBakeCommandTest extends TestCase
             ['Bake\Command\FormCommand'],
             ['Bake\Command\HelperCommand'],
             ['Bake\Command\MiddlewareCommand'],
-            ['Bake\Command\ShellHelperCommand'],
+            ['Bake\Command\CommandHelperCommand'],
         ];
     }
 
@@ -155,5 +154,15 @@ class SimpleBakeCommandTest extends TestCase
         $this->assertIsString($task->name());
         $this->assertIsString($task->fileName('Example'));
         $this->assertIsString($task->template());
+    }
+
+    public function testBakeComponent(): void
+    {
+        $this->generatedFile = APP . 'Controller/Component/ExampleComponent.php';
+        $this->exec('bake component --no-test Example');
+
+        $this->assertExitCode(CommandInterface::CODE_SUCCESS);
+        $this->assertFileExists($this->generatedFile);
+        $this->assertFileContains('class ExampleComponent extends Component', $this->generatedFile);
     }
 }

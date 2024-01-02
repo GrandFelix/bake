@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace Bake\View\Helper;
 
+use Bake\CodeGen\ImportHelper;
 use Bake\Utility\Model\AssociationFilter;
 use Brick\VarExporter\VarExporter;
 use Cake\Core\Configure;
@@ -12,6 +13,8 @@ use Cake\Datasource\SchemaInterface;
 use Cake\ORM\Table;
 use Cake\Utility\Inflector;
 use Cake\View\Helper;
+use function Cake\Collection\collection;
+use function Cake\Core\pluginSplit;
 
 /**
  * Bake helper
@@ -25,14 +28,14 @@ class BakeHelper extends Helper
      *
      * @var array<string, mixed>
      */
-    protected $_defaultConfig = [];
+    protected array $_defaultConfig = [];
 
     /**
      * AssociationFilter utility
      *
      * @var \Bake\Utility\Model\AssociationFilter|null
      */
-    protected $_associationFilter = null;
+    protected ?AssociationFilter $_associationFilter = null;
 
     /**
      * Used for generating formatted properties such as component and helper arrays
@@ -60,74 +63,6 @@ class BakeHelper extends Helper
     }
 
     /**
-     * Returns an array converted into a formatted multiline string
-     *
-     * @param array $list array of items to be stringified
-     * @param array<string, mixed> $options options to use
-     * @return string
-     * @deprecated 2.5.0 Use BakeHelper::exportVar() instead.
-     */
-    public function stringifyList(array $list, array $options = []): string
-    {
-        $defaults = [
-            'indent' => 2,
-            'tab' => '    ',
-            'trailingComma' => !isset($options['indent']) || $options['indent'] ? true : false,
-            'quotes' => true,
-        ];
-        $options += $defaults;
-
-        if (!$list) {
-            return '';
-        }
-
-        foreach ($list as $k => &$v) {
-            if ($options['quotes']) {
-                $v = "'$v'";
-            }
-            if (!is_numeric($k)) {
-                $nestedOptions = $options;
-                if ($nestedOptions['indent']) {
-                    $nestedOptions['indent'] += 1;
-                }
-                if (is_array($v)) {
-                    $v = sprintf(
-                        "'%s' => [%s]",
-                        $k,
-                        $this->stringifyList($v, $nestedOptions)
-                    );
-                } else {
-                    $v = "'$k' => $v";
-                }
-            } elseif (is_array($v)) {
-                $nestedOptions = $options;
-                if ($nestedOptions['indent']) {
-                    $nestedOptions['indent'] += 1;
-                }
-                $v = sprintf(
-                    '[%s]',
-                    $this->stringifyList($v, $nestedOptions)
-                );
-            }
-        }
-
-        $start = $end = '';
-        $join = ', ';
-        if ($options['indent']) {
-            $join = ',';
-            $start = "\n" . str_repeat($options['tab'], $options['indent']);
-            $join .= $start;
-            $end = "\n" . str_repeat($options['tab'], $options['indent'] - 1);
-        }
-
-        if ($options['trailingComma'] && $options['indent'] > 0) {
-            $end = ',' . $end;
-        }
-
-        return $start . implode($join, $list) . $end;
-    }
-
-    /**
      * Export variable to string representation.
      *
      * (Similar to `var_export()` but better).
@@ -139,7 +74,7 @@ class BakeHelper extends Helper
      * @throws \Brick\VarExporter\ExportException
      * @see https://github.com/brick/varexporter#options
      */
-    public function exportVar($var, int $indentLevel = 0, int $options = 0): string
+    public function exportVar(mixed $var, int $indentLevel = 0, int $options = 0): string
     {
         $options |= VarExporter::TRAILING_COMMA_IN_ARRAY;
 
@@ -172,7 +107,7 @@ class BakeHelper extends Helper
      *
      * @param \Cake\ORM\Table $table object to find associations on
      * @param string $assoc association to extract
-     * @return string[]
+     * @return array<string>
      */
     public function aliasExtractor(Table $table, string $assoc): array
     {
@@ -206,7 +141,7 @@ class BakeHelper extends Helper
      */
     public function classInfo(string $class, string $type, string $suffix): array
     {
-        [$plugin, $name] = \pluginSplit($class);
+        [$plugin, $name] = pluginSplit($class);
 
         $base = Configure::read('App.namespace');
         if ($plugin !== null) {
@@ -244,7 +179,7 @@ class BakeHelper extends Helper
         array $fields,
         SchemaInterface $schema,
         ?Table $modelObject = null,
-        $takeFields = 0,
+        string|int $takeFields = 0,
         array $filterTypes = ['binary']
     ): array {
         $fields = collection($fields)
@@ -278,7 +213,7 @@ class BakeHelper extends Helper
         $immediateAssociations = $associations['BelongsTo'];
         $associationFields = collection($fields)
             ->map(function ($field) use ($immediateAssociations) {
-                foreach ($immediateAssociations as $alias => $details) {
+                foreach ($immediateAssociations as $details) {
                     if ($field === $details['foreignKey']) {
                         return [$field => $details];
                     }
@@ -361,7 +296,7 @@ class BakeHelper extends Helper
      *
      * @param string $field Field name.
      * @param array $rules Validation rules list.
-     * @return string[]
+     * @return array<string>
      */
     public function getValidationMethods(string $field, array $rules): array
     {
@@ -414,11 +349,11 @@ class BakeHelper extends Helper
     /**
      * Get field accessibility data.
      *
-     * @param string[]|false|null $fields Fields list.
-     * @param string[]|null $primaryKey Primary key.
+     * @param array<string>|false|null $fields Fields list.
+     * @param array<string>|null $primaryKey Primary key.
      * @return array<string, bool>
      */
-    public function getFieldAccessibility($fields = null, $primaryKey = null): array
+    public function getFieldAccessibility(array|false|null $fields = null, ?array $primaryKey = null): array
     {
         $accessible = [];
 
@@ -457,11 +392,120 @@ class BakeHelper extends Helper
     }
 
     /**
+     * Generates block of use statements from imports.
+     *
+     * @param array<string|int, string> $imports Class imports
+     * @return string
+     */
+    public function getClassUses(array $imports): string
+    {
+        $uses = [];
+
+        $imports = ImportHelper::normalize($imports);
+        asort($imports, SORT_STRING | SORT_FLAG_CASE);
+        foreach ($imports as $alias => $type) {
+            $uses[] = 'use ' . $this->getUseType($alias, $type) . ';';
+        }
+
+        return implode("\n", $uses);
+    }
+
+    /**
+     * Generates block of suse statements from function imports.
+     *
+     * @param array<string|int, string> $imports Function imports
+     * @return string
+     */
+    public function getFunctionUses(array $imports): string
+    {
+        $uses = [];
+
+        $imports = ImportHelper::normalize($imports);
+        asort($imports, SORT_STRING | SORT_FLAG_CASE);
+        foreach ($imports as $alias => $type) {
+            $uses[] = 'use function ' . $this->getUseType($alias, $type) . ';';
+        }
+
+        return implode("\n", $uses);
+    }
+
+    /**
+     * Generates block of use statements from const imports.
+     *
+     * @param array<string|int, string> $imports constImports
+     * @return string
+     */
+    public function getConstUses(array $imports): string
+    {
+        $uses = [];
+
+        $imports = ImportHelper::normalize($imports);
+        asort($imports, SORT_STRING | SORT_FLAG_CASE);
+        foreach ($imports as $alias => $type) {
+            $uses[] = 'use const ' . $this->getUseType($alias, $type) . ';';
+        }
+
+        return implode("\n", $uses);
+    }
+
+    /**
+     * Gets use type string from name and alias.
+     *
+     * @param string $alias Import alias
+     * @param string $name Import name
+     * @return string
+     */
+    protected function getUseType(string $alias, string $name): string
+    {
+        if ($name == $alias || substr($name, -strlen("\\{$alias}")) === "\\{$alias}") {
+            return $name;
+        }
+
+        return "{$name} as {$alias}";
+    }
+
+    /**
+     * Concats strings together.
+     *
+     * @param string $delimiter Delimiter to separate strings
+     * @param array<array<string>|string> $strings Strings to concatenate
+     * @param string $prefix Code to prepend if final output is not empty
+     * @param string $suffix Code to append if final output is not empty
+     * @return string
+     */
+    public function concat(
+        string $delimiter,
+        array $strings,
+        string $prefix = '',
+        string $suffix = ''
+    ): string {
+        $output = implode(
+            $delimiter,
+            array_map(function ($string) use ($delimiter) {
+                if (is_string($string)) {
+                    return $string;
+                }
+
+                return implode($delimiter, array_filter($string));
+            }, array_filter($strings))
+        );
+
+        if ($prefix && !empty($output)) {
+            $output = $prefix . $output;
+        }
+        if ($suffix && !empty($output)) {
+            $output .= $suffix;
+        }
+
+        return $output;
+    }
+
+    /**
      * To be mocked elsewhere...
      *
      * @param \Cake\ORM\Table $table Table
-     * @param string[] $aliases array of aliases
-     * @return string[]
+     * @param array<string> $aliases array of aliases
+     * @return array<string>
      */
     protected function _filterHasManyAssociationsAliases(Table $table, array $aliases): array
     {

@@ -2,27 +2,24 @@
 declare(strict_types=1);
 
 /**
- * CakePHP(tm) : Rapid Development Framework (http://cakephp.org)
- * Copyright (c) Cake Software Foundation, Inc. (http://cakefoundation.org)
+ * CakePHP(tm) : Rapid Development Framework (https://cakephp.org)
+ * Copyright (c) Cake Software Foundation, Inc. (https://cakefoundation.org)
  *
  * Licensed under The MIT License
  * For full copyright and license information, please see the LICENSE.txt
  * Redistributions of files must retain the above copyright notice.
  *
- * @copyright     Copyright (c) Cake Software Foundation, Inc. (http://cakefoundation.org)
- * @link          http://cakephp.org CakePHP(tm) Project
+ * @copyright     Copyright (c) Cake Software Foundation, Inc. (https://cakefoundation.org)
+ * @link          https://cakephp.org CakePHP(tm) Project
  * @since         0.1.0
- * @license       http://www.opensource.org/licenses/mit-license.php MIT License
+ * @license       https://www.opensource.org/licenses/mit-license.php MIT License
  */
 namespace Bake\Test\TestCase;
 
+use Cake\Console\TestSuite\ConsoleIntegrationTestTrait;
 use Cake\Routing\Router;
-use Cake\TestSuite\ConsoleIntegrationTestTrait;
 use Cake\TestSuite\StringCompareTrait;
 use Cake\TestSuite\TestCase as BaseTestCase;
-use PHPUnit\Framework\Constraint\FileExists;
-use PHPUnit\Framework\Constraint\LogicalNot;
-use PHPUnit\Framework\Constraint\RegularExpression;
 
 abstract class TestCase extends BaseTestCase
 {
@@ -85,21 +82,6 @@ abstract class TestCase extends BaseTestCase
     }
 
     /**
-     * Asserts that a string matches a given regular expression.
-     *
-     * @param string $pattern Regex pattern
-     * @param string $string String to test
-     * @param string $message Message
-     * @return void
-     * @throws \SebastianBergmann\RecursionContext\InvalidArgumentException
-     * @codeCoverageIgnore
-     */
-    public static function assertMatchesRegularExpression(string $pattern, string $string, string $message = ''): void
-    {
-        static::assertThat($string, new RegularExpression($pattern), $message);
-    }
-
-    /**
      * Assert that a list of files exist.
      *
      * @param array<string> $files The list of files to check.
@@ -110,20 +92,6 @@ abstract class TestCase extends BaseTestCase
         foreach ($files as $file) {
             $this->assertFileExists($file, $message);
         }
-    }
-
-    /**
-     * Asserts that a file does not exist.
-     *
-     * @param string $filename Filename
-     * @param string $message Message
-     * @return void
-     * @throws \SebastianBergmann\RecursionContext\InvalidArgumentException
-     * @codeCoverageIgnore
-     */
-    public static function assertFileDoesNotExist(string $filename, string $message = ''): void
-    {
-        static::assertThat($filename, new LogicalNot(new FileExists()), $message);
     }
 
     /**

@@ -2,23 +2,24 @@
 declare(strict_types=1);
 
 /**
- * CakePHP(tm) : Rapid Development Framework (http://cakephp.org)
- * Copyright (c) Cake Software Foundation, Inc. (http://cakefoundation.org)
+ * CakePHP(tm) : Rapid Development Framework (https://cakephp.org)
+ * Copyright (c) Cake Software Foundation, Inc. (https://cakefoundation.org)
  *
  * Licensed under The MIT License
  * For full copyright and license information, please see the LICENSE.txt
  * Redistributions of files must retain the above copyright notice.
  *
- * @copyright     Copyright (c) Cake Software Foundation, Inc. (http://cakefoundation.org)
- * @link          http://cakephp.org CakePHP(tm) Project
+ * @copyright     Copyright (c) Cake Software Foundation, Inc. (https://cakefoundation.org)
+ * @link          https://cakephp.org CakePHP(tm) Project
  * @since         0.1.0
- * @license       http://www.opensource.org/licenses/mit-license.php MIT License
+ * @license       https://www.opensource.org/licenses/mit-license.php MIT License
  */
 namespace Bake\Utility\Model;
 
 use Cake\ORM\Table;
 use Cake\Utility\Inflector;
 use Exception;
+use function Cake\Core\namespaceSplit;
 
 /**
  * Utility class to filter Model Table associations
@@ -30,8 +31,8 @@ class AssociationFilter
      * belongsToMany associations provided
      *
      * @param \Cake\ORM\Table $table Table
-     * @param string[] $aliases array of aliases
-     * @return string[] $aliases
+     * @param array<string> $aliases array of aliases
+     * @return array<string> $aliases
      */
     public function filterHasManyAssociationsAliases(Table $table, array $aliases): array
     {
@@ -44,7 +45,7 @@ class AssociationFilter
      * Get the array of junction aliases for all the BelongsToMany associations
      *
      * @param \Cake\ORM\Table $table Table
-     * @return string[] Junction aliases of all the BelongsToMany associations
+     * @return array<string> Junction aliases of all the BelongsToMany associations
      */
     public function belongsToManyJunctionAliases(Table $table): array
     {

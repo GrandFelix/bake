@@ -7,8 +7,8 @@ namespace Bake\Test\App\Controller;
  * BakeArticles Controller
  *
  * @property \Bake\Test\App\Model\Table\BakeArticlesTable $BakeArticles
- * @property \Cake\Controller\Component\RequestHandlerComponent $RequestHandler
- * @property \Cake\Controller\Component\AuthComponent $Auth
+ * @property \Cake\Controller\Component\FormProtectionComponent $FormProtection
+ * @property \Cake\Controller\Component\FlashComponent $Flash
  */
 class BakeArticlesController extends AppController
 {
@@ -21,36 +21,22 @@ class BakeArticlesController extends AppController
     {
         parent::initialize();
 
-        $this->loadComponent('RequestHandler');
-        $this->loadComponent('Auth');
+        $this->loadComponent('FormProtection');
+        $this->loadComponent('Flash');
         $this->viewBuilder()->setHelpers(['Html', 'Time']);
     }
 
     /**
-     * Login method
+     * Index method
      *
      * @return \Cake\Http\Response|null|void Renders view
      */
-    public function login()
+    public function index()
     {
-        if ($this->request->is('post')) {
-            $user = $this->Auth->identify();
-            if ($user) {
-                $this->Auth->setUser($user);
+        $query = $this->BakeArticles->find()
+            ->contain(['BakeUsers']);
+        $bakeArticles = $this->paginate($query);
 
-                return $this->redirect($this->Auth->redirectUrl());
-            }
-            $this->Flash->error(__('Invalid credentials, try again'));
-        }
-    }
-
-    /**
-     * Logout method
-     *
-     * @return \Cake\Http\Response|null|void Redirects to logout URL
-     */
-    public function logout()
-    {
-        return $this->redirect($this->Auth->logout());
+        $this->set(compact('bakeArticles'));
     }
 }

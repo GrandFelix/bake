@@ -2,28 +2,29 @@
 declare(strict_types=1);
 
 /**
- * CakePHP(tm) : Rapid Development Framework (http://cakephp.org)
- * Copyright (c) Cake Software Foundation, Inc. (http://cakefoundation.org)
+ * CakePHP(tm) : Rapid Development Framework (https://cakephp.org)
+ * Copyright (c) Cake Software Foundation, Inc. (https://cakefoundation.org)
  *
  * Licensed under The MIT License
  * For full copyright and license information, please see the LICENSE.txt
  * Redistributions of files must retain the above copyright notice.
  *
- * @copyright     Copyright (c) Cake Software Foundation, Inc. (http://cakefoundation.org)
- * @link          http://cakephp.org CakePHP(tm) Project
+ * @copyright     Copyright (c) Cake Software Foundation, Inc. (https://cakefoundation.org)
+ * @link          https://cakephp.org CakePHP(tm) Project
  * @since         0.1.0
- * @license       http://www.opensource.org/licenses/mit-license.php MIT License
+ * @license       https://www.opensource.org/licenses/mit-license.php MIT License
  */
 namespace Bake\Command;
 
 use Bake\Utility\TableScanner;
-use Bake\Utility\TemplateRenderer;
 use Brick\VarExporter\VarExporter;
+use Cake\Chronos\Chronos;
+use Cake\Chronos\ChronosDate;
 use Cake\Console\Arguments;
 use Cake\Console\ConsoleIo;
 use Cake\Console\ConsoleOptionParser;
 use Cake\Core\Configure;
-use Cake\Database\Exception\DatabaseException;
+use Cake\Core\Exception\CakeException;
 use Cake\Database\Schema\TableSchemaInterface;
 use Cake\Datasource\ConnectionManager;
 use Cake\Utility\Inflector;
@@ -72,7 +73,7 @@ class FixtureCommand extends BakeCommand
         ])->addOption('count', [
             'help' => 'When using generated data, the number of records to include in the fixture(s).',
             'short' => 'n',
-            'default' => 1,
+            'default' => '1',
         ])->addOption('fields', [
             'help' => 'Create a fixture that includes the deprecated $fields property.',
             'short' => 'f',
@@ -160,7 +161,7 @@ class FixtureCommand extends BakeCommand
 
         try {
             $data = $this->readSchema($model, $useTable);
-        } catch (DatabaseException $e) {
+        } catch (CakeException $e) {
             $this->getTableLocator()->remove($model);
             $useTable = Inflector::underscore($model);
             $table = $useTable;
@@ -261,13 +262,13 @@ class FixtureCommand extends BakeCommand
         $path = $this->getPath($args);
         $filename = $vars['name'] . 'Fixture.php';
 
-        $renderer = new TemplateRenderer($args->getOption('theme'));
-        $renderer->set('model', $model);
-        $renderer->set($vars);
-        $content = $renderer->generate('Bake.tests/fixture');
+        $contents = $this->createTemplateRenderer()
+            ->set('model', $model)
+            ->set($vars)
+            ->generate('Bake.tests/fixture');
 
         $io->out("\n" . sprintf('Baking test fixture for %s...', $model), 1, ConsoleIo::NORMAL);
-        $io->createFile($path . $filename, $content, $args->getOption('force'));
+        $io->createFile($path . $filename, $contents, $this->force);
         $emptyFile = $path . '.gitkeep';
         $this->deleteEmptyFile($emptyFile, $io);
     }
@@ -319,7 +320,7 @@ class FixtureCommand extends BakeCommand
      * Formats Schema columns from Model Object
      *
      * @param array $values options keys(type, null, default, key, length, extra)
-     * @return string[] Formatted values
+     * @return array<string> Formatted values
      */
     protected function _values(array $values): array
     {
@@ -436,9 +437,11 @@ class FixtureCommand extends BakeCommand
     protected function _makeRecordString(array $records): string
     {
         foreach ($records as &$record) {
-            array_walk($record, function (&$value) {
-                if ($value instanceof DateTimeInterface) {
+            array_walk($record, function (&$value): void {
+                if ($value instanceof DateTimeInterface || $value instanceof Chronos) {
                     $value = $value->format('Y-m-d H:i:s');
+                } elseif ($value instanceof ChronosDate) {
+                    $value = $value->format('Y-m-d');
                 }
             });
         }

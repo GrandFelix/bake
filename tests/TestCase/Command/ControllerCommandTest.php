@@ -2,17 +2,17 @@
 declare(strict_types=1);
 
 /**
- * CakePHP(tm) : Rapid Development Framework (http://cakephp.org)
- * Copyright (c) Cake Software Foundation, Inc. (http://cakefoundation.org)
+ * CakePHP(tm) : Rapid Development Framework (https://cakephp.org)
+ * Copyright (c) Cake Software Foundation, Inc. (https://cakefoundation.org)
  *
  * Licensed under The MIT License
  * For full copyright and license information, please see the LICENSE.txt
  * Redistributions of files must retain the above copyright notice.
  *
- * @copyright     Copyright (c) Cake Software Foundation, Inc. (http://cakefoundation.org)
- * @link          http://cakephp.org CakePHP(tm) Project
+ * @copyright     Copyright (c) Cake Software Foundation, Inc. (https://cakefoundation.org)
+ * @link          https://cakephp.org CakePHP(tm) Project
  * @since         0.1.0
- * @license       http://www.opensource.org/licenses/mit-license.php MIT License
+ * @license       https://www.opensource.org/licenses/mit-license.php MIT License
  */
 namespace Bake\Test\TestCase\Command;
 
@@ -33,7 +33,7 @@ class ControllerCommandTest extends TestCase
      *
      * @var array<string>
      */
-    protected $fixtures = [
+    protected array $fixtures = [
         'plugin.Bake.BakeArticles',
         'plugin.Bake.BakeArticlesBakeTags',
         'plugin.Bake.BakeComments',
@@ -49,7 +49,6 @@ class ControllerCommandTest extends TestCase
     {
         parent::setUp();
         $this->_compareBasePath = Plugin::path('Bake') . 'tests' . DS . 'comparisons' . DS . 'Controller' . DS;
-        $this->useCommandRunner();
         $this->setAppNamespace('Bake\Test\App');
 
         $this->getTableLocator()->get('BakeArticles', [
@@ -130,7 +129,7 @@ class ControllerCommandTest extends TestCase
         $this->generatedFile = APP . 'Controller/BakeArticlesController.php';
         $this->exec(
             'bake controller --connection test --no-test --no-actions ' .
-            '--components "RequestHandler, Auth, Company/TestBakeThree.Something, TestBake.Other, Apple, NonExistent" ' .
+            '--components "FormProtection, Flash, Company/TestBakeThree.Something, TestBake.Other, Apple, NonExistent" ' .
             'BakeArticles'
         );
 
@@ -149,8 +148,8 @@ class ControllerCommandTest extends TestCase
         $this->generatedFile = APP . 'Controller/BakeArticlesController.php';
         $this->exec(
             'bake controller --connection test --no-test ' .
-            '--helpers Html,Time --components RequestHandler,Auth ' .
-            '--actions login,logout BakeArticles'
+            '--helpers Html,Time --components FormProtection,Flash ' .
+            '--actions index BakeArticles'
         );
 
         $this->assertExitCode(CommandInterface::CODE_SUCCESS);
@@ -168,7 +167,7 @@ class ControllerCommandTest extends TestCase
         $this->generatedFile = APP . 'Controller/BakeArticlesController.php';
         $this->exec(
             'bake controller --connection test --no-test ' .
-            '--helpers Html,Time --components RequestHandler,Auth --no-actions BakeArticles'
+            '--helpers Html,Time --components FormProtection,Flash --no-actions BakeArticles'
         );
 
         $this->assertExitCode(CommandInterface::CODE_SUCCESS);
@@ -186,7 +185,7 @@ class ControllerCommandTest extends TestCase
         $this->generatedFile = APP . 'Controller/BakeArticlesController.php';
         $this->exec(
             'bake controller --connection test --no-test ' .
-            '--helpers Html,Time --components "RequestHandler, Auth" BakeArticles'
+            '--helpers Html,Time --components "FormProtection, Flash" BakeArticles'
         );
 
         $this->assertExitCode(CommandInterface::CODE_SUCCESS);

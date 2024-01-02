@@ -2,17 +2,17 @@
 declare(strict_types=1);
 
 /**
- * CakePHP(tm) : Rapid Development Framework (http://cakephp.org)
- * Copyright (c) Cake Software Foundation, Inc. (http://cakefoundation.org)
+ * CakePHP(tm) : Rapid Development Framework (https://cakephp.org)
+ * Copyright (c) Cake Software Foundation, Inc. (https://cakefoundation.org)
  *
  * Licensed under The MIT License
  * For full copyright and license information, please see the LICENSE.txt
  * Redistributions of files must retain the above copyright notice.
  *
- * @copyright     Copyright (c) Cake Software Foundation, Inc. (http://cakefoundation.org)
- * @link          http://cakephp.org CakePHP(tm) Project
+ * @copyright     Copyright (c) Cake Software Foundation, Inc. (https://cakefoundation.org)
+ * @link          https://cakephp.org CakePHP(tm) Project
  * @since         2.0.0
- * @license       http://www.opensource.org/licenses/mit-license.php MIT License
+ * @license       https://www.opensource.org/licenses/mit-license.php MIT License
  */
 namespace Bake\Utility;
 
@@ -32,18 +32,18 @@ class TableScanner
     /**
      * @var \Cake\Database\Connection
      */
-    protected $connection;
+    protected Connection $connection;
 
     /**
-     * @var string[]
+     * @var array<string>
      */
-    protected $ignore;
+    protected array $ignore;
 
     /**
      * Constructor
      *
      * @param \Cake\Database\Connection $connection The connection name in ConnectionManager
-     * @param string[]|null $ignore List of tables or regex pattern to ignore. If null, the default ignore
+     * @param array<string>|null $ignore List of tables or regex pattern to ignore. If null, the default ignore
      *   list will be used.
      */
     public function __construct(Connection $connection, ?array $ignore = null)
@@ -58,7 +58,7 @@ class TableScanner
     /**
      * Get all tables in the connection without applying ignores.
      *
-     * @return string[]
+     * @return array<string>
      */
     public function listAll(): array
     {
@@ -75,7 +75,7 @@ class TableScanner
     /**
      * Get all tables in the connection that aren't ignored.
      *
-     * @return string[]
+     * @return array<string>
      */
     public function listUnskipped(): array
     {

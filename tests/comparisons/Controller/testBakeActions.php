@@ -7,9 +7,8 @@ namespace Bake\Test\App\Controller;
  * BakeArticles Controller
  *
  * @property \Bake\Test\App\Model\Table\BakeArticlesTable $BakeArticles
- * @property \Cake\Controller\Component\RequestHandlerComponent $RequestHandler
- * @property \Cake\Controller\Component\AuthComponent $Auth
- * @method \Bake\Test\App\Model\Entity\BakeArticle[]|\Cake\Datasource\ResultSetInterface paginate($object = null, array $settings = [])
+ * @property \Cake\Controller\Component\FormProtectionComponent $FormProtection
+ * @property \Cake\Controller\Component\FlashComponent $Flash
  */
 class BakeArticlesController extends AppController
 {
@@ -22,8 +21,8 @@ class BakeArticlesController extends AppController
     {
         parent::initialize();
 
-        $this->loadComponent('RequestHandler');
-        $this->loadComponent('Auth');
+        $this->loadComponent('FormProtection');
+        $this->loadComponent('Flash');
         $this->viewBuilder()->setHelpers(['Html', 'Time']);
     }
 
@@ -34,10 +33,9 @@ class BakeArticlesController extends AppController
      */
     public function index()
     {
-        $this->paginate = [
-            'contain' => ['BakeUsers'],
-        ];
-        $bakeArticles = $this->paginate($this->BakeArticles);
+        $query = $this->BakeArticles->find()
+            ->contain(['BakeUsers']);
+        $bakeArticles = $this->paginate($query);
 
         $this->set(compact('bakeArticles'));
     }
@@ -51,10 +49,7 @@ class BakeArticlesController extends AppController
      */
     public function view($id = null)
     {
-        $bakeArticle = $this->BakeArticles->get($id, [
-            'contain' => ['BakeUsers', 'BakeTags', 'BakeComments'],
-        ]);
-
+        $bakeArticle = $this->BakeArticles->get($id, contain: ['BakeUsers', 'BakeTags', 'BakeComments']);
         $this->set(compact('bakeArticle'));
     }
 
@@ -75,8 +70,8 @@ class BakeArticlesController extends AppController
             }
             $this->Flash->error(__('The bake article could not be saved. Please, try again.'));
         }
-        $bakeUsers = $this->BakeArticles->BakeUsers->find('list', ['limit' => 200])->all();
-        $bakeTags = $this->BakeArticles->BakeTags->find('list', ['limit' => 200])->all();
+        $bakeUsers = $this->BakeArticles->BakeUsers->find('list', limit: 200)->all();
+        $bakeTags = $this->BakeArticles->BakeTags->find('list', limit: 200)->all();
         $this->set(compact('bakeArticle', 'bakeUsers', 'bakeTags'));
     }
 
@@ -89,9 +84,7 @@ class BakeArticlesController extends AppController
      */
     public function edit($id = null)
     {
-        $bakeArticle = $this->BakeArticles->get($id, [
-            'contain' => ['BakeTags'],
-        ]);
+        $bakeArticle = $this->BakeArticles->get($id, contain: ['BakeTags']);
         if ($this->request->is(['patch', 'post', 'put'])) {
             $bakeArticle = $this->BakeArticles->patchEntity($bakeArticle, $this->request->getData());
             if ($this->BakeArticles->save($bakeArticle)) {
@@ -101,8 +94,8 @@ class BakeArticlesController extends AppController
             }
             $this->Flash->error(__('The bake article could not be saved. Please, try again.'));
         }
-        $bakeUsers = $this->BakeArticles->BakeUsers->find('list', ['limit' => 200])->all();
-        $bakeTags = $this->BakeArticles->BakeTags->find('list', ['limit' => 200])->all();
+        $bakeUsers = $this->BakeArticles->BakeUsers->find('list', limit: 200)->all();
+        $bakeTags = $this->BakeArticles->BakeTags->find('list', limit: 200)->all();
         $this->set(compact('bakeArticle', 'bakeUsers', 'bakeTags'));
     }
 
@@ -110,7 +103,7 @@ class BakeArticlesController extends AppController
      * Delete method
      *
      * @param string|null $id Bake Article id.
-     * @return \Cake\Http\Response|null|void Redirects to index.
+     * @return \Cake\Http\Response|null Redirects to index.
      * @throws \Cake\Datasource\Exception\RecordNotFoundException When record not found.
      */
     public function delete($id = null)
