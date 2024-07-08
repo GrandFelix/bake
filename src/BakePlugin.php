@@ -40,13 +40,6 @@ class BakePlugin extends BasePlugin
     protected ?string $name = 'Bake';
 
     /**
-     * Load routes or not
-     *
-     * @var bool
-     */
-    protected bool $routesEnabled = false;
-
-    /**
      * Load the TwigView plugin.
      *
      * @phpstan-ignore-next-line
