@@ -76,6 +76,20 @@
                 </tr>
 {% endfor %}
 {% endif %}
+{% if groupedFields.enum %}
+{% for field in groupedFields.enum %}
+                <tr>
+                    <th><?= __('{{ field|humanize }}') ?></th>
+{% set columnData = Bake.columnData(field, schema) %}
+{% set supportsLabel = Bake.enumSupportsLabel(field, schema) %}
+{% if columnData.null %}
+                    <td><?= ${{ singularVar }}->{{ field }} === null ? '' : h(${{ singularVar }}->{{ field }}->{% if supportsLabel %}label(){% else %}value{% endif %}) ?></td>
+{% else %}
+                    <td><?= h(${{ singularVar }}->{{ field }}->{% if supportsLabel %}label(){% else %}value{% endif %}) ?></td>
+{% endif %}
+                </tr>
+{% endfor %}
+{% endif %}
 {% if groupedFields.date %}
 {% for field in groupedFields.date %}
                 <tr>
@@ -105,7 +119,7 @@
 {% endif %}
 {% set relations = associations.BelongsToMany|merge(associations.HasMany) %}
 {% for alias, details in relations %}
-{% set otherSingularVar = alias|variable %}
+{% set otherSingularVar = alias|singularize|variable %}
 {% set otherPluralHumanName = details.controller|underscore|humanize %}
             <div class="related">
                 <h4><?= __('Related {{ otherPluralHumanName }}') ?></h4>
