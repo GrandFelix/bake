@@ -33,13 +33,6 @@ use ReflectionException;
 class BakePlugin extends BasePlugin
 {
     /**
-     * Plugin name.
-     *
-     * @var string|null
-     */
-    protected ?string $name = 'Bake';
-
-    /**
      * Load the TwigView plugin.
      *
      * @phpstan-ignore-next-line
